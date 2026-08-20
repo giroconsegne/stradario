@@ -1,5 +1,7 @@
 # Stradario
 
+**App online: <https://giroconsegne.github.io/stradario/>**
+
 Piccola web app per tenere l'elenco delle vie con i residenti, numero civico e interno.
 Pensata per la preparazione del casellario: si cerca un nome e viene fuori l'indirizzo,
 si apre una via e vengono fuori i nominativi raggruppati per civico.

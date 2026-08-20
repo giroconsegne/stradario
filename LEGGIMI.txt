@@ -18,7 +18,20 @@ anche se il server non e' partito, perche' viene tenuta una copia locale.
 Nello stesso menu, in fondo, c'e' la scritta "Uso senza rete: attivo"
 quando la copia offline e' pronta.
 
-DAL TELEFONO (stessa rete wi-fi)
+DAL TELEFONO (e da qualsiasi altro posto)
+L app e pubblicata qui:  https://giroconsegne.github.io/stradario/
+Aprila col browser del telefono e poi:
+  Android/Chrome: menu ... > Aggiungi a schermata Home (o Installa app)
+  iPhone/Safari:  tasto Condividi > Aggiungi a Home
+Da quel momento hai l icona e funziona anche senza campo.
+Ricorda: i dati del telefono sono un archivio separato da quelli del PC.
+
+PER AGGIORNARE L APP PUBBLICATA
+Doppio clic su "Pubblica su GitHub.cmd". Se hai modificato index.html,
+alza prima il numero di versione in cima a sw.js (stradario-v1 -> v2),
+altrimenti i dispositivi continuano a usare la copia vecchia.
+
+DAL TELEFONO IN LOCALE (stessa rete wi-fi)
 La finestra nera stampa anche un indirizzo tipo http://192.168.x.x:8080
 Digitalo nel browser del telefono: l'app si apre e funziona.
 NOTA: l'icona-app e l'uso senza rete sul telefono richiedono un indirizzo
