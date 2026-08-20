@@ -1,0 +1,59 @@
+STRADARIO - CASELLARIO  (web app)
+=================================
+
+COME SI AVVIA
+Doppio clic su "Avvia Stradario.cmd".
+Si apre una finestra nera (e' il server locale: lasciala aperta mentre usi
+l'app) e subito dopo il browser su http://localhost:8080
+Per chiudere tutto: Ctrl+C nella finestra nera, oppure chiudila.
+
+INSTALLARLA COME APP VERA
+Con l'app aperta, clicca l'ingranaggio in alto a destra >
+"Installa l'app sul dispositivo". Oppure, in Edge/Chrome: menu ... >
+App > Installa questo sito come app.
+Da quel momento hai l'icona sul desktop / nel menu Start e l'app parte a
+schermo intero, senza barre del browser. Serve comunque che la finestra nera
+sia aperta la prima volta; dopo l'installazione l'app resta utilizzabile
+anche se il server non e' partito, perche' viene tenuta una copia locale.
+Nello stesso menu, in fondo, c'e' la scritta "Uso senza rete: attivo"
+quando la copia offline e' pronta.
+
+DAL TELEFONO (stessa rete wi-fi)
+La finestra nera stampa anche un indirizzo tipo http://192.168.x.x:8080
+Digitalo nel browser del telefono: l'app si apre e funziona.
+NOTA: l'icona-app e l'uso senza rete sul telefono richiedono un indirizzo
+https, che con il server locale non c'e'. Serve una pubblicazione online
+(dei file dell'app, NON dei dati).
+
+COME SI USA
+1. Crea una via ("+ Nuova via").
+2. Entra nella via e usa "Inserimento rapido" in fondo: nome, civico,
+   interno, Invio. Il civico resta compilato, cosi' carichi tutta la
+   palazzina di seguito.
+3. Per scala, piano, note e citofono usa "+ Nominativo".
+4. La barra in alto cerca ovunque: nomi, vie, civici, note. Tasto "/".
+
+DOVE SONO I DATI
+Solo sul dispositivo, dentro il browser. Niente internet, nessun account.
+Attenzione: ogni indirizzo e' un archivio a se'. I dati inseriti aprendo
+il vecchio file "stradario.html" col doppio clic NON si vedono su
+http://localhost:8080 e viceversa. Anche PC e telefono sono archivi separati.
+Per travasarli: ingranaggio > "Esporta backup", poi "Importa backup"
+sull'altro dispositivo.
+
+FAI I BACKUP
+Se pulisci i dati di navigazione o cambi browser, l'archivio si perde.
+Ogni tanto: ingranaggio > "Esporta backup (.json)" e metti il file al
+sicuro (altra cartella o OneDrive). C'e' anche l'export CSV per Excel.
+
+I FILE DELLA CARTELLA
+  Avvia Stradario.cmd ..... l'avvio (doppio clic qui)
+  index.html .............. l'app
+  server.js ............... il server locale (Node.js, nessuna installazione)
+  sw.js ................... fa funzionare l'app senza rete
+  manifest.webmanifest .... nome e icone dell'app installata
+  icone/ .................. le icone
+  stradario.html .......... la prima versione, quella da doppio clic.
+                            Se ci avevi gia' inserito dei dati: aprila,
+                            esporta il backup e importalo nell'app nuova.
+                            Poi puoi cancellarla.

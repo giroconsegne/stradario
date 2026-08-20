@@ -1,0 +1,16 @@
+# I backup contengono i nominativi dei residenti: non vanno MAI pubblicati.
+stradario_backup_*.json
+stradario_*.csv
+*.backup
+
+# prima versione, sostituita da index.html
+stradario.html
+
+# roba di sistema
+Thumbs.db
+desktop.ini
+.DS_Store
+node_modules/
+
+# avvio locale specifico di questo computer
+Pubblica su GitHub.cmd

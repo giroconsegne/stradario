@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stradario — Casellario</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone/icona.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icone/icona-192.png">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e2126" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stradario">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#ffffff; --text:#1b1d21; --muted:#6b7280;
+    --line:#e2e5ea; --accent:#1d5fd6; --accent-soft:#e8effc;
+    --danger:#c0392b; --ok:#0f7b4f; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#15171b; --card:#1e2126; --text:#e8eaed; --muted:#9aa3af;
+      --line:#2c3037; --accent:#5b90f5; --accent-soft:#20304d;
+      --danger:#e5675a; --ok:#4ec08a; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  header{
+    position:sticky; top:0; z-index:20; background:var(--card);
+    border-bottom:1px solid var(--line); padding:10px 14px;
+  }
+  .top{display:flex; align-items:center; gap:10px; max-width:900px; margin:0 auto}
+  .logo{font-weight:700; font-size:17px; white-space:nowrap}
+  .logo small{display:block; font-weight:400; font-size:11px; color:var(--muted)}
+  .search{flex:1; display:flex; align-items:center; gap:8px; background:var(--bg);
+    border:1px solid var(--line); border-radius:10px; padding:0 10px}
+  .search input{flex:1; border:0; background:transparent; color:var(--text);
+    font-size:16px; padding:10px 0; outline:none}
+  .search span{color:var(--muted); font-size:15px}
+  main{max-width:900px; margin:0 auto; padding:14px 14px 100px}
+  button{font:inherit; cursor:pointer; border-radius:9px; border:1px solid var(--line);
+    background:var(--card); color:var(--text); padding:8px 13px}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.ghost{background:transparent}
+  button.link{border:0; background:none; color:var(--accent); padding:4px 6px; text-decoration:underline}
+  button.danger{color:var(--danger)}
+  .icon{border:0; background:none; padding:6px 8px; font-size:16px; color:var(--muted); border-radius:8px}
+  .icon:hover{background:var(--bg); color:var(--text)}
+  .row{display:flex; align-items:center; gap:8px}
+  .between{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px;
+    box-shadow:var(--shadow); overflow:hidden}
+  .card + .card{margin-top:10px}
+  h2{font-size:15px; margin:22px 0 10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em}
+  .street{display:flex; align-items:center; gap:12px; padding:13px 14px; cursor:pointer; border-bottom:1px solid var(--line)}
+  .street:last-child{border-bottom:0}
+  .street:hover{background:var(--accent-soft)}
+  .street .name{flex:1; font-weight:600}
+  .street .sub{font-size:13px; color:var(--muted); font-weight:400}
+  .badge{background:var(--bg); border:1px solid var(--line); color:var(--muted);
+    border-radius:20px; padding:2px 10px; font-size:13px; white-space:nowrap}
+  .civico-group{border-bottom:1px solid var(--line)}
+  .civico-group:last-child{border-bottom:0}
+  .civico-head{display:flex; align-items:baseline; gap:8px; padding:9px 14px;
+    background:var(--bg); font-weight:700; font-size:14px}
+  .civico-head small{font-weight:400; color:var(--muted)}
+  .person{display:flex; align-items:center; gap:10px; padding:10px 14px; border-top:1px solid var(--line)}
+  .person .who{flex:1; min-width:0}
+  .person .who b{font-weight:600}
+  .person .meta{font-size:13px; color:var(--muted)}
+  .person .note{font-size:13px; color:var(--muted); font-style:italic}
+  .empty{text-align:center; color:var(--muted); padding:44px 16px}
+  .empty p{margin:6px 0 16px}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px}
+  .crumb{display:flex; align-items:center; gap:6px; color:var(--muted); font-size:14px; margin-bottom:8px}
+  .title{font-size:22px; font-weight:700; margin:0 0 4px}
+  form.quick{display:grid; grid-template-columns:1fr 90px 90px auto; gap:8px; padding:12px 14px;
+    background:var(--bg); border-top:1px solid var(--line)}
+  @media(max-width:620px){
+    form.quick{grid-template-columns:1fr 1fr; }
+    form.quick .wide{grid-column:1 / -1}
+    form.quick button{grid-column:1 / -1}
+  }
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:3px}
+  input[type=text], input[type=search], textarea, select{
+    width:100%; padding:9px 10px; border-radius:9px; border:1px solid var(--line);
+    background:var(--card); color:var(--text); font:inherit; outline:none}
+  input:focus, textarea:focus, select:focus{border-color:var(--accent)}
+  dialog{border:0; border-radius:14px; padding:0; background:var(--card); color:var(--text);
+    box-shadow:0 20px 60px rgba(0,0,0,.35); width:min(460px, 94vw)}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  .dlg-body{padding:18px}
+  .dlg-body h3{margin:0 0 14px; font-size:18px}
+  .field{margin-bottom:12px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .dlg-actions{display:flex; justify-content:space-between; gap:8px; padding:12px 18px;
+    border-top:1px solid var(--line); background:var(--bg)}
+  .fab{position:fixed; right:18px; bottom:18px; z-index:30; box-shadow:var(--shadow);
+    padding:14px 20px; font-weight:600; border-radius:30px}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+    background:#1b1d21; color:#fff; padding:10px 18px; border-radius:24px; z-index:60;
+    opacity:0; pointer-events:none; transition:opacity .2s; font-size:14px}
+  .toast.show{opacity:1}
+  .hint{font-size:13px; color:var(--muted)}
+  mark{background:var(--accent-soft); color:inherit; border-radius:3px; padding:0 2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top">
+    <div class="logo">Stradario<small>Casellario — dati locali</small></div>
+    <div class="search">
+      <span>&#128269;</span>
+      <input id="q" type="search" placeholder="Cerca nome, via, civico…" autocomplete="off">
+    </div>
+    <button class="icon" id="btnMenu" title="Backup e impostazioni">&#9881;</button>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<button class="fab primary" id="fab">+ Aggiungi</button>
+<div class="toast" id="toast"></div>
+
+<!-- Dialog VIA -->
+<dialog id="dlgVia">
+  <form method="dialog">
+    <div class="dlg-body">
+      <h3 id="viaTitle">Nuova via</h3>
+      <div class="field">
+        <label for="viaNome">Nome della via *</label>
+        <input type="text" id="viaNome" placeholder="Es. Via Roma" required>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label for="viaCap">CAP</label>
+          <input type="text" id="viaCap" placeholder="Es. 90100">
+        </div>
+        <div class="field">
+          <label for="viaLoc">Località / frazione</label>
+          <input type="text" id="viaLoc" placeholder="Facoltativo">
+        </div>
+      </div>
+      <div class="field">
+        <label for="viaNote">Note</label>
+        <input type="text" id="viaNote" placeholder="Facoltativo">
+      </div>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="danger" id="viaDelete">Elimina</button>
+      <div class="row">
+        <button type="button" class="ghost" data-close="dlgVia">Annulla</button>
+        <button type="button" class="primary" id="viaSave">Salva</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Dialog ABITANTE -->
+<dialog id="dlgAb">
+  <form method="dialog">
+    <div class="dlg-body">
+      <h3 id="abTitle">Nuovo residente</h3>
+      <div class="field">
+        <label for="abVia">Via *</label>
+        <select id="abVia"></select>
+      </div>
+      <div class="field">
+        <label for="abNome">Cognome e nome *</label>
+        <input type="text" id="abNome" placeholder="Es. Rossi Mario" required>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label for="abCivico">Numero civico *</label>
+          <input type="text" id="abCivico" placeholder="Es. 12 oppure 12/A">
+        </div>
+        <div class="field">
+          <label for="abInterno">Interno</label>
+          <input type="text" id="abInterno" placeholder="Es. 5 (se presente)">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label for="abScala">Scala / palazzina</label>
+          <input type="text" id="abScala" placeholder="Facoltativo">
+        </div>
+        <div class="field">
+          <label for="abPiano">Piano</label>
+          <input type="text" id="abPiano" placeholder="Facoltativo">
+        </div>
+      </div>
+      <div class="field">
+        <label for="abNote">Note (citofono, cassetta, ecc.)</label>
+        <input type="text" id="abNote" placeholder="Facoltativo">
+      </div>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="danger" id="abDelete">Elimina</button>
+      <div class="row">
+        <button type="button" class="ghost" data-close="dlgAb">Annulla</button>
+        <button type="button" class="primary" id="abSave">Salva</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Dialog MENU / BACKUP -->
+<dialog id="dlgMenu">
+  <div class="dlg-body">
+    <h3>Backup e dati</h3>
+    <div class="field" id="wrapInstall" hidden>
+      <button class="primary" id="btnInstall" style="width:100%">&#128241; Installa l'app sul dispositivo</button>
+      <p class="hint" style="margin:6px 0 0">Aggiunge l'icona e la fa partire a schermo intero, anche senza rete.</p>
+    </div>
+    <p class="hint">I dati stanno solo su questo dispositivo, dentro il browser.
+      Esporta ogni tanto un file di backup: se cambi browser o pulisci la cronologia, senza backup i dati si perdono.</p>
+    <div class="field" style="margin-top:16px">
+      <button class="primary" id="btnExport" style="width:100%">&#11015; Esporta backup (.json)</button>
+    </div>
+    <div class="field">
+      <button id="btnImport" style="width:100%">&#11014; Importa backup (.json)</button>
+      <input type="file" id="fileImport" accept="application/json,.json" hidden>
+    </div>
+    <div class="field">
+      <button id="btnCsv" style="width:100%">&#128203; Esporta elenco in CSV (per Excel)</button>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--line); margin:18px 0">
+    <p class="hint" id="stats"></p>
+    <p class="hint" id="swStato"></p>
+    <button class="danger ghost" id="btnWipe" style="width:100%; margin-top:8px">Cancella tutti i dati</button>
+  </div>
+  <div class="dlg-actions" style="justify-content:flex-end">
+    <button class="ghost" data-close="dlgMenu">Chiudi</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+
+/* ---------------- Archivio dati (localStorage) ---------------- */
+const KEY = "stradario.casellario.v1";
+let db = load();
+let view = { page: "vie", viaId: null };
+let editing = { viaId: null, abId: null };
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){
+      const d = JSON.parse(raw);
+      if(Array.isArray(d.vie) && Array.isArray(d.abitanti)) return d;
+    }
+  }catch(e){ console.warn("Archivio illeggibile", e); }
+  return { version:1, vie:[], abitanti:[] };
+}
+function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(db));
+  }catch(e){
+    alert("Impossibile salvare i dati nel browser: " + e.message);
+  }
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+/* ---------------- Utilità ---------------- */
+const norm = s => (s||"").toString().toLowerCase()
+  .normalize("NFD").replace(new RegExp("[\u0300-\u036f]","g"),"").trim();
+
+const esc = s => (s||"").toString()
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+// Ordinamento "naturale": 2 < 10, e 12 < 12/A < 12/B
+function civKey(c){
+  const s = (c||"").toString().trim();
+  const m = s.match(/^(\d+)(.*)$/);
+  return m ? [parseInt(m[1],10), norm(m[2])] : [Number.MAX_SAFE_INTEGER, norm(s)];
+}
+function cmpCivico(a,b){
+  const ka = civKey(a), kb = civKey(b);
+  if(ka[0] !== kb[0]) return ka[0]-kb[0];
+  return ka[1].localeCompare(kb[1]);
+}
+function cmpInterno(a,b){
+  const na = parseInt(a,10), nb = parseInt(b,10);
+  if(!isNaN(na) && !isNaN(nb) && na!==nb) return na-nb;
+  return norm(a).localeCompare(norm(b));
+}
+const via = id => db.vie.find(v => v.id === id);
+const abitantiDiVia = id => db.abitanti.filter(a => a.viaId === id);
+
+function vieOrdinate(){
+  return [...db.vie].sort((a,b)=> norm(a.nome).localeCompare(norm(b.nome)));
+}
+function abitantiOrdinati(list){
+  return [...list].sort((a,b)=>
+    cmpCivico(a.civico,b.civico) ||
+    cmpInterno(a.interno,b.interno) ||
+    norm(a.nome).localeCompare(norm(b.nome))
+  );
+}
+function indirizzo(a){
+  const v = via(a.viaId);
+  let s = v ? v.nome : "(via eliminata)";
+  if(a.civico) s += ", " + a.civico;
+  if(a.scala) s += " sc. " + a.scala;
+  if(a.interno) s += " int. " + a.interno;
+  if(a.piano) s += " p. " + a.piano;
+  return s;
+}
+function highlight(text, q){
+  const t = esc(text);
+  if(!q) return t;
+  const i = norm(text).indexOf(norm(q));
+  if(i < 0) return t;
+  // rimappa gli indici sul testo originale (stessa lunghezza dopo NFD-strip)
+  const a = esc(text.slice(0,i)), b = esc(text.slice(i, i+q.length)), c = esc(text.slice(i+q.length));
+  return a + "<mark>" + b + "</mark>" + c;
+}
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=> t.classList.remove("show"), 1900);
+}
+
+/* ---------------- Render ---------------- */
+const app = document.getElementById("app");
+const qbox = document.getElementById("q");
+
+function render(){
+  const q = qbox.value.trim();
+  if(q) return renderRicerca(q);
+  if(view.page === "via" && via(view.viaId)) return renderVia(via(view.viaId));
+  view.page = "vie";
+  renderVie();
+}
+
+function renderVie(){
+  document.getElementById("fab").textContent = "+ Nuova via";
+  const vie = vieOrdinate();
+  if(!vie.length){
+    app.innerHTML = `
+      <div class="empty">
+        <h2 style="color:var(--text);text-transform:none;font-size:20px">Archivio vuoto</h2>
+        <p>Comincia inserendo la prima via, poi aggiungi le persone con civico e interno.</p>
+        <button class="primary" onclick="apriVia()">Aggiungi la prima via</button>
+      </div>`;
+    return;
+  }
+  const tot = db.abitanti.length;
+  app.innerHTML = `
+    <div class="between" style="margin-bottom:12px">
+      <div><span class="badge">${vie.length} vie</span> <span class="badge">${tot} nominativi</span></div>
+      <button onclick="apriAbitante()">+ Nominativo</button>
+    </div>
+    <div class="card">
+      ${vie.map(v=>{
+        const n = abitantiDiVia(v.id).length;
+        const sub = [v.cap, v.localita, v.note].filter(Boolean).join(" · ");
+        return `<div class="street" onclick="vaiVia('${v.id}')">
+          <div class="name">${esc(v.nome)}${sub ? `<div class="sub">${esc(sub)}</div>`:""}</div>
+          <span class="badge">${n}</span>
+          <span style="color:var(--muted)">&rsaquo;</span>
+        </div>`;
+      }).join("")}
+    </div>`;
+}
+
+function renderVia(v){
+  document.getElementById("fab").textContent = "+ Nominativo";
+  const lista = abitantiOrdinati(abitantiDiVia(v.id));
+  const gruppi = [];
+  for(const a of lista){
+    const key = a.civico || "—";
+    let g = gruppi.find(g => g.key === key);
+    if(!g){ g = {key, items:[]}; gruppi.push(g); }
+    g.items.push(a);
+  }
+  const sub = [v.cap, v.localita, v.note].filter(Boolean).join(" · ");
+  app.innerHTML = `
+    <div class="crumb"><button class="link" onclick="vaiVie()">&lsaquo; Tutte le vie</button></div>
+    <div class="between" style="margin-bottom:14px">
+      <div>
+        <h1 class="title">${esc(v.nome)}</h1>
+        ${sub ? `<div class="hint">${esc(sub)}</div>`:""}
+      </div>
+      <button class="icon" title="Modifica via" onclick="apriVia('${v.id}')">&#9998;</button>
+    </div>
+
+    ${gruppi.length ? `<div class="card">
+      ${gruppi.map(g=>`
+        <div class="civico-group">
+          <div class="civico-head">Civico ${esc(g.key)} <small>${g.items.length} ${g.items.length===1?"nominativo":"nominativi"}</small></div>
+          ${g.items.map(a=>`
+            <div class="person">
+              <div class="who">
+                <b>${esc(a.nome)}</b>
+                <div class="meta">${[
+                  a.interno ? "int. "+esc(a.interno) : "",
+                  a.scala ? "sc. "+esc(a.scala) : "",
+                  a.piano ? "piano "+esc(a.piano) : ""
+                ].filter(Boolean).join(" · ") || "&nbsp;"}</div>
+                ${a.note ? `<div class="note">${esc(a.note)}</div>`:""}
+              </div>
+              <button class="icon" title="Modifica" onclick="apriAbitante('${a.id}')">&#9998;</button>
+            </div>`).join("")}
+        </div>`).join("")}
+    </div>` : `<div class="empty"><p>Nessun nominativo in questa via.</p></div>`}
+
+    <div class="card" style="margin-top:14px">
+      <div class="civico-head">Inserimento rapido</div>
+      <form class="quick" onsubmit="return quickAdd(event,'${v.id}')">
+        <div class="wide"><label>Cognome e nome</label><input type="text" id="qNome" required placeholder="Rossi Mario"></div>
+        <div><label>Civico</label><input type="text" id="qCiv" required placeholder="12"></div>
+        <div><label>Interno</label><input type="text" id="qInt" placeholder="—"></div>
+        <button class="primary" type="submit" style="align-self:end">Aggiungi</button>
+      </form>
+    </div>`;
+}
+
+function renderRicerca(q){
+  const nq = norm(q);
+  const persone = db.abitanti.filter(a=>
+    norm(a.nome).includes(nq) ||
+    norm(a.note).includes(nq) ||
+    norm(indirizzo(a)).includes(nq)
+  ).sort((a,b)=> norm(a.nome).localeCompare(norm(b.nome)));
+
+  const vie = vieOrdinate().filter(v => norm(v.nome).includes(nq));
+
+  app.innerHTML = `
+    <div class="between" style="margin-bottom:12px">
+      <div class="hint">${persone.length} nominativi · ${vie.length} vie per “${esc(q)}”</div>
+      <button class="link" onclick="pulisciRicerca()">Annulla ricerca</button>
+    </div>
+    ${vie.length ? `<h2>Vie</h2><div class="card">
+      ${vie.map(v=>`<div class="street" onclick="vaiVia('${v.id}')">
+        <div class="name">${highlight(v.nome,q)}</div>
+        <span class="badge">${abitantiDiVia(v.id).length}</span>
+        <span style="color:var(--muted)">&rsaquo;</span></div>`).join("")}
+    </div>`:""}
+    ${persone.length ? `<h2>Nominativi</h2><div class="card">
+      ${persone.map(a=>`<div class="person">
+        <div class="who">
+          <b>${highlight(a.nome,q)}</b>
+          <div class="meta">${esc(indirizzo(a))}</div>
+          ${a.note ? `<div class="note">${esc(a.note)}</div>`:""}
+        </div>
+        <button class="icon" title="Modifica" onclick="apriAbitante('${a.id}')">&#9998;</button>
+      </div>`).join("")}
+    </div>`:""}
+    ${(!vie.length && !persone.length) ? `<div class="empty">
+        <p>Nessun risultato per “${esc(q)}”.</p>
+        <button class="primary" onclick="apriAbitante(null,null,'${esc(q).replace(/'/g,"")}')">Aggiungi “${esc(q)}” come nominativo</button>
+      </div>`:""}`;
+}
+
+/* ---------------- Navigazione ---------------- */
+function vaiVia(id){ qbox.value=""; view = {page:"via", viaId:id}; window.scrollTo(0,0); render(); }
+function vaiVie(){ qbox.value=""; view = {page:"vie", viaId:null}; window.scrollTo(0,0); render(); }
+function pulisciRicerca(){ qbox.value=""; render(); }
+
+/* ---------------- Form: VIA ---------------- */
+function apriVia(id){
+  editing.viaId = id || null;
+  const v = id ? via(id) : null;
+  document.getElementById("viaTitle").textContent = v ? "Modifica via" : "Nuova via";
+  document.getElementById("viaNome").value = v ? v.nome : "";
+  document.getElementById("viaCap").value  = v ? (v.cap||"") : "";
+  document.getElementById("viaLoc").value  = v ? (v.localita||"") : "";
+  document.getElementById("viaNote").value = v ? (v.note||"") : "";
+  document.getElementById("viaDelete").style.visibility = v ? "visible" : "hidden";
+  const d = document.getElementById("dlgVia");
+  d.showModal();
+  setTimeout(()=> document.getElementById("viaNome").focus(), 50);
+}
+document.getElementById("viaSave").onclick = ()=>{
+  const nome = document.getElementById("viaNome").value.trim();
+  if(!nome){ toast("Il nome della via è obbligatorio"); return; }
+  const dati = {
+    nome,
+    cap: document.getElementById("viaCap").value.trim(),
+    localita: document.getElementById("viaLoc").value.trim(),
+    note: document.getElementById("viaNote").value.trim()
+  };
+  if(editing.viaId){
+    Object.assign(via(editing.viaId), dati);
+    toast("Via aggiornata");
+  }else{
+    const doppione = db.vie.find(v => norm(v.nome) === norm(nome));
+    if(doppione && !confirm(`“${doppione.nome}” esiste già. Vuoi crearla comunque?`)) return;
+    const nuova = {id:uid(), ...dati};
+    db.vie.push(nuova);
+    view = {page:"via", viaId:nuova.id};
+    toast("Via creata");
+  }
+  save();
+  document.getElementById("dlgVia").close();
+  render();
+};
+document.getElementById("viaDelete").onclick = ()=>{
+  const v = via(editing.viaId); if(!v) return;
+  const n = abitantiDiVia(v.id).length;
+  const msg = n ? `Eliminare “${v.nome}” e i suoi ${n} nominativi?` : `Eliminare “${v.nome}”?`;
+  if(!confirm(msg)) return;
+  db.abitanti = db.abitanti.filter(a => a.viaId !== v.id);
+  db.vie = db.vie.filter(x => x.id !== v.id);
+  save();
+  document.getElementById("dlgVia").close();
+  vaiVie();
+  toast("Via eliminata");
+};
+
+/* ---------------- Form: ABITANTE ---------------- */
+function apriAbitante(id, viaIdPredefinita, nomePrecompilato){
+  if(!db.vie.length){
+    toast("Crea prima una via");
+    apriVia();
+    return;
+  }
+  editing.abId = id || null;
+  const a = id ? db.abitanti.find(x=>x.id===id) : null;
+  const sel = document.getElementById("abVia");
+  sel.innerHTML = vieOrdinate().map(v=>`<option value="${v.id}">${esc(v.nome)}</option>`).join("");
+  sel.value = a ? a.viaId : (viaIdPredefinita || view.viaId || sel.options[0].value);
+
+  document.getElementById("abTitle").textContent = a ? "Modifica nominativo" : "Nuovo nominativo";
+  document.getElementById("abNome").value    = a ? a.nome : (nomePrecompilato || "");
+  document.getElementById("abCivico").value  = a ? (a.civico||"") : "";
+  document.getElementById("abInterno").value = a ? (a.interno||"") : "";
+  document.getElementById("abScala").value   = a ? (a.scala||"") : "";
+  document.getElementById("abPiano").value   = a ? (a.piano||"") : "";
+  document.getElementById("abNote").value    = a ? (a.note||"") : "";
+  document.getElementById("abDelete").style.visibility = a ? "visible" : "hidden";
+  document.getElementById("dlgAb").showModal();
+  setTimeout(()=> document.getElementById("abNome").focus(), 50);
+}
+document.getElementById("abSave").onclick = ()=>{
+  const nome = document.getElementById("abNome").value.trim();
+  const civico = document.getElementById("abCivico").value.trim();
+  if(!nome){ toast("Cognome e nome sono obbligatori"); return; }
+  if(!civico){ toast("Il numero civico è obbligatorio"); return; }
+  const dati = {
+    viaId: document.getElementById("abVia").value,
+    nome, civico,
+    interno: document.getElementById("abInterno").value.trim(),
+    scala:   document.getElementById("abScala").value.trim(),
+    piano:   document.getElementById("abPiano").value.trim(),
+    note:    document.getElementById("abNote").value.trim()
+  };
+  if(editing.abId){
+    Object.assign(db.abitanti.find(x=>x.id===editing.abId), dati);
+    toast("Nominativo aggiornato");
+  }else{
+    db.abitanti.push({id:uid(), ...dati});
+    toast("Nominativo aggiunto");
+  }
+  view = {page:"via", viaId:dati.viaId};
+  qbox.value = "";
+  save();
+  document.getElementById("dlgAb").close();
+  render();
+};
+document.getElementById("abDelete").onclick = ()=>{
+  const a = db.abitanti.find(x=>x.id===editing.abId); if(!a) return;
+  if(!confirm(`Eliminare “${a.nome}”?`)) return;
+  db.abitanti = db.abitanti.filter(x=>x.id!==a.id);
+  save();
+  document.getElementById("dlgAb").close();
+  render();
+  toast("Nominativo eliminato");
+};
+
+/* Inserimento rapido dentro la via */
+function quickAdd(ev, viaId){
+  ev.preventDefault();
+  const nome = document.getElementById("qNome").value.trim();
+  const civico = document.getElementById("qCiv").value.trim();
+  const interno = document.getElementById("qInt").value.trim();
+  if(!nome || !civico) return false;
+  db.abitanti.push({id:uid(), viaId, nome, civico, interno, scala:"", piano:"", note:""});
+  save();
+  render();
+  // ripristina il civico e rimetti il fuoco sul nome: inserimento a raffica
+  const n = document.getElementById("qNome"), c = document.getElementById("qCiv");
+  if(n && c){ c.value = civico; n.focus(); }
+  toast("Aggiunto: " + nome);
+  return false;
+}
+
+/* ---------------- Backup ---------------- */
+function scarica(nomeFile, contenuto, tipo){
+  const blob = new Blob([contenuto], {type: tipo});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = nomeFile;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 3000);
+}
+function stamp(){
+  const d = new Date(), p = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+}
+document.getElementById("btnExport").onclick = ()=>{
+  scarica(`stradario_backup_${stamp()}.json`, JSON.stringify(db, null, 2), "application/json");
+  toast("Backup esportato");
+};
+document.getElementById("btnCsv").onclick = ()=>{
+  const q = s => `"${(s||"").toString().replace(/"/g,'""')}"`;
+  const righe = [["Via","CAP","Località","Civico","Scala","Interno","Piano","Cognome e nome","Note"].map(q).join(";")];
+  for(const v of vieOrdinate()){
+    for(const a of abitantiOrdinati(abitantiDiVia(v.id))){
+      righe.push([v.nome, v.cap, v.localita, a.civico, a.scala, a.interno, a.piano, a.nome, a.note].map(q).join(";"));
+    }
+  }
+  scarica(`stradario_${stamp()}.csv`, "﻿" + righe.join("\r\n"), "text/csv");
+  toast("CSV esportato");
+};
+document.getElementById("btnImport").onclick = ()=> document.getElementById("fileImport").click();
+document.getElementById("fileImport").onchange = ev=>{
+  const file = ev.target.files[0]; if(!file) return;
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    let d;
+    try{ d = JSON.parse(fr.result); }
+    catch(e){ alert("File non valido: non è un backup JSON."); return; }
+    if(!d || !Array.isArray(d.vie) || !Array.isArray(d.abitanti)){
+      alert("File non valido: mancano le sezioni vie/abitanti."); return;
+    }
+    const scelta = db.vie.length || db.abitanti.length
+      ? confirm(`Il backup contiene ${d.vie.length} vie e ${d.abitanti.length} nominativi.\n\nOK = SOSTITUISCI i dati attuali\nAnnulla = UNISCI ai dati attuali`)
+      : true;
+    if(scelta){
+      db = {version:1, vie:d.vie, abitanti:d.abitanti};
+    }else{
+      const mappa = {};
+      for(const v of d.vie){
+        const esistente = db.vie.find(x => norm(x.nome) === norm(v.nome));
+        if(esistente){ mappa[v.id] = esistente.id; }
+        else{ const nid = uid(); mappa[v.id] = nid; db.vie.push({...v, id:nid}); }
+      }
+      for(const a of d.abitanti){
+        db.abitanti.push({...a, id:uid(), viaId: mappa[a.viaId] || a.viaId});
+      }
+    }
+    save();
+    document.getElementById("dlgMenu").close();
+    vaiVie();
+    toast("Backup importato");
+  };
+  fr.readAsText(file);
+  ev.target.value = "";
+};
+document.getElementById("btnWipe").onclick = ()=>{
+  if(!confirm("Cancellare TUTTI i dati? L'operazione non si può annullare.")) return;
+  if(!confirm("Sei proprio sicuro? Esporta prima un backup se non l'hai fatto.")) return;
+  db = {version:1, vie:[], abitanti:[]};
+  save();
+  document.getElementById("dlgMenu").close();
+  vaiVie();
+  toast("Archivio svuotato");
+};
+document.getElementById("btnMenu").onclick = ()=>{
+  document.getElementById("stats").textContent =
+    `Archivio: ${db.vie.length} vie, ${db.abitanti.length} nominativi.`;
+  aggiornaStatoOffline();
+  document.getElementById("dlgMenu").showModal();
+};
+
+async function aggiornaStatoOffline(){
+  const el = document.getElementById("swStato");
+  if(!el) return;
+  if(location.protocol === "file:"){
+    el.textContent = "Uso senza rete: non attivo (file aperto col doppio clic). "
+      + "Per l'icona-app e l'uso offline avvia \"Avvia Stradario.cmd\".";
+    return;
+  }
+  if(!("serviceWorker" in navigator)){
+    el.textContent = "Uso senza rete: non supportato da questo browser.";
+    return;
+  }
+  try{
+    const reg = await navigator.serviceWorker.getRegistration();
+    el.textContent = reg && (reg.active || reg.installing)
+      ? "Uso senza rete: attivo" + (window.matchMedia("(display-mode: standalone)").matches ? " · app installata" : "")
+      : "Uso senza rete: in preparazione, ricarica la pagina.";
+  }catch(e){
+    el.textContent = "Uso senza rete: non disponibile (" + e.message + ")";
+  }
+}
+
+/* ---------------- Eventi generali ---------------- */
+document.querySelectorAll("[data-close]").forEach(b=>{
+  b.onclick = ()=> document.getElementById(b.dataset.close).close();
+});
+document.getElementById("fab").onclick = ()=>{
+  if(view.page === "via" && !qbox.value) apriAbitante(null, view.viaId);
+  else apriVia();
+};
+let tmr;
+qbox.oninput = ()=>{ clearTimeout(tmr); tmr = setTimeout(render, 120); };
+qbox.onkeydown = e=>{ if(e.key === "Escape") pulisciRicerca(); };
+document.addEventListener("keydown", e=>{
+  if(e.key === "/" && document.activeElement !== qbox && !document.querySelector("dialog[open]")){
+    e.preventDefault(); qbox.focus();
+  }
+});
+window.addEventListener("beforeunload", save);
+
+/* ---------------- Web app: installazione e funzionamento offline ---------------- */
+let promptInstall = null;
+window.addEventListener("beforeinstallprompt", e=>{
+  e.preventDefault();
+  promptInstall = e;
+  document.getElementById("wrapInstall").hidden = false;
+});
+document.getElementById("btnInstall").onclick = async ()=>{
+  if(!promptInstall) return;
+  promptInstall.prompt();
+  const esito = await promptInstall.userChoice;
+  promptInstall = null;
+  document.getElementById("wrapInstall").hidden = true;
+  if(esito.outcome === "accepted"){
+    document.getElementById("dlgMenu").close();
+    toast("App installata");
+  }
+};
+window.addEventListener("appinstalled", ()=>{
+  document.getElementById("wrapInstall").hidden = true;
+});
+
+// Il service worker rende l'app utilizzabile senza rete. Su file:// non è
+// disponibile: l'app funziona lo stesso, semplicemente non si installa.
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").then(reg=>{
+      reg.addEventListener("updatefound", ()=>{
+        const nuovo = reg.installing;
+        if(!nuovo) return;
+        nuovo.addEventListener("statechange", ()=>{
+          if(nuovo.state === "installed" && navigator.serviceWorker.controller){
+            toast("Nuova versione pronta: ricarica la pagina");
+          }
+        });
+      });
+    }).catch(e=> console.warn("Service worker non registrato:", e));
+  });
+}
+
+render();
+</script>
+</body>
+</html>
