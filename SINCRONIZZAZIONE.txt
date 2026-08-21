@@ -1,0 +1,151 @@
+SINCRONIZZAZIONE FRA PC E TELEFONO  (Firebase)
+==============================================
+
+A cosa serve
+------------
+Finche' non fai questa configurazione, l'app funziona come sempre e i dati
+restano solo sul dispositivo che stai usando: PC e telefono sono due archivi
+separati.
+Dopo, l'archivio e' uno solo: scrivi un nominativo sul telefono in giro e lo
+trovi sul PC, e viceversa.
+
+PRIMA DI COMINCIARE, DA SAPERE
+------------------------------
+- I nominativi (nomi, indirizzi, note) finiscono anche sui server di Google.
+  Non sono piu' solo tuoi e del tuo PC. E' una scelta normalissima, ma va
+  fatta sapendolo. Se ti serve solo non perdere i dati, il backup su file
+  dall'ingranaggio basta e non fa uscire niente da qui.
+- Nel passaggio 5 scegli l'Europa come zona del database: i dati restano
+  su server europei.
+- Se PC e telefono hanno GIA' due archivi diversi, alla prima sincronizzazione
+  vengono messi insieme tutti e due. Un nominativo scritto due volte, una per
+  dispositivo, resta scritto due volte: per l'app sono due schede diverse.
+  Se ti fa comodo, prima di collegare il secondo dispositivo puoi svuotarlo
+  (ingranaggio > Cancella tutti i dati) e lasciar arrivare tutto dal primo.
+- Costa zero. Il piano gratuito di Firebase regge questo uso senza problemi:
+  ogni sincronizzazione e' una lettura e una scrittura sole.
+
+PASSO 1 - Crea il progetto
+--------------------------
+Vai su https://console.firebase.google.com ed entra con il tuo account Google.
+"Crea un progetto" > dagli un nome (es. stradario) > Continua.
+Google Analytics: DISATTIVA, non serve. > Crea progetto.
+
+PASSO 2 - Aggiungi l'app web
+----------------------------
+Nella pagina del progetto, clicca l'icona </> ("Web").
+Nickname: stradario. NON spuntare "Configura anche Firebase Hosting".
+> Registra app.
+Compare un riquadro di codice. Ti servono due righe sole, copiale da parte:
+
+  apiKey: "AIza............"
+  projectId: "stradario-xxxxx"
+
+(Se poi la perdi: ingranaggio in alto a sinistra > Impostazioni progetto >
+"Le tue app".)
+
+PASSO 3 - Accendi l'accesso con email e password
+------------------------------------------------
+Menu a sinistra > Build > Authentication > Inizia.
+Scheda "Sign-in method" > Email/Password > attiva il primo interruttore
+(non serve il secondo, "Link email") > Salva.
+
+PASSO 4 - Crea l'utente che usera' l'app
+----------------------------------------
+Sempre in Authentication, scheda "Users" > "Aggiungi utente".
+Metti la tua email e SCEGLI UNA PASSWORD LUNGA (almeno 12 caratteri, non una
+che usi altrove). Con quella email e quella password entrerai nell'app da
+tutti i dispositivi.
+ATTENZIONE: la pagina dell'app e' pubblica su internet, quindi l'unica cosa
+che separa i tuoi nominativi da chiunque e' questa password. Non essere
+tirchio. Salvala nel gestore password del browser o su un foglio.
+
+PASSO 5 - Crea il database
+--------------------------
+Menu a sinistra > Build > Firestore Database > "Crea database".
+Zona: scegline una europea (es. eur3, oppure europe-west8 = Milano).
+Modalita': "Avvia in modalita' di produzione" (bloccato: le regole le
+mettiamo noi al passo 6). > Crea.
+
+PASSO 6 - Metti le regole di sicurezza
+--------------------------------------
+Firestore Database > scheda "Regole". Cancella quello che c'e' e incolla
+esattamente questo, poi "Pubblica":
+
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      match /archivi/{utente} {
+        allow read, write: if request.auth != null && request.auth.uid == utente;
+      }
+    }
+  }
+
+Vuol dire: ognuno puo' leggere e scrivere solo il proprio archivio, e solo
+dopo aver fatto l'accesso. Senza queste regole l'archivio sarebbe aperto a
+chiunque: non saltare questo passo.
+
+PASSO 7 - Scrivi le due chiavi dentro l'app
+-------------------------------------------
+Apri index.html con un editor di testo (Blocco note va bene) e cerca:
+
+  const FIREBASE = {
+    apiKey:  "",
+    progetto: ""
+  };
+
+Metti fra le virgolette i due valori del passo 2: in apiKey la apiKey, in
+progetto il projectId. Salva.
+
+Queste due righe NON sono password e non c'e' niente di male se si vedono:
+la chiave web di Firebase e' fatta apposta per stare dentro la pagina, in
+chiaro. A proteggere l'archivio sono la password del passo 4 e le regole
+del passo 6.
+
+PASSO 8 - Collega i dispositivi
+-------------------------------
+Apri l'app > ingranaggio in alto a destra > "Collega questo dispositivo" >
+email e password del passo 4 > Entra.
+Da quel momento in alto compare una nuvoletta: verde = tutto allineato,
+rossa = qualcosa non va (clicca per riprovare), lampeggiante = sta lavorando.
+Ripeti la stessa cosa sul telefono, con la stessa email e la stessa password.
+
+Se l'app la usi da internet e non dal PC, ricordati di ripubblicarla dopo il
+passo 7 (doppio clic su "Pubblica su GitHub.cmd"), se no il telefono continua
+a scaricare la versione senza le chiavi.
+
+COME SI COMPORTA
+----------------
+- Si sincronizza da sola: all'apertura, quando torni sull'app, quando torna
+  la rete, e qualche secondo dopo ogni modifica.
+- Senza rete l'app funziona tutta: le modifiche restano in coda e partono
+  appena la rete torna.
+- Se lo stesso nominativo viene toccato su tutti e due i dispositivi, vince
+  la modifica piu' recente. Cose diverse toccate sui due dispositivi non si
+  pestano i piedi: si sommano.
+- Una cancellazione fatta qui si porta via il nominativo anche di la',
+  non torna indietro.
+- "Scollega" stacca solo questo dispositivo: l'archivio resta sia qui che
+  in rete.
+
+SE QUALCOSA NON VA
+------------------
+"email o password sbagliati"
+   Rifai il passo 4, o ricontrolla di aver attivato Email/Password (passo 3).
+"permesso negato: controlla le regole di sicurezza"
+   Le regole del passo 6 non sono state pubblicate, o sono diverse.
+"database non trovato: controlla il nome del progetto"
+   Il projectId del passo 7 e' sbagliato, o il database del passo 5 non e'
+   stato creato.
+"nessuna rete"
+   E' solo offline: riprova da sola appena torna la linea.
+La nuvoletta non compare
+   Le due chiavi del passo 7 sono vuote, oppure il dispositivo non e' ancora
+   collegato (passo 8).
+
+E IL BACKUP SU FILE?
+--------------------
+Continua a servire, e conviene farlo ogni tanto lo stesso. La copia in rete
+ti protegge dal telefono rotto, non da un errore tuo: se cancelli per sbaglio
+mezza via, la cancellazione si sincronizza allegramente su tutti i
+dispositivi. Il file esportato e' l'unica copia che non si muove.

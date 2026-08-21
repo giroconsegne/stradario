@@ -14,3 +14,10 @@ node_modules/
 
 # avvio locale specifico di questo computer
 Pubblica su GitHub.cmd
+
+# appunti con le credenziali: non devono uscire da questo computer
+utente stradario.txt
+credenziali*.txt
+
+# configurazione locale dell'editor
+.claude/

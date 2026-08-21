@@ -43,11 +43,17 @@ COME SI USA
 2. Entra nella via e usa "Inserimento rapido" in fondo: nome, civico,
    interno, Invio. Il civico resta compilato, cosi' carichi tutta la
    palazzina di seguito.
-3. Per scala, piano, note e citofono usa "+ Nominativo".
-4. La barra in alto cerca ovunque: nomi, vie, civici, note. Tasto "/".
+3. Piu' nomi allo stesso indirizzo: in "+ Nominativo" ogni nome ha la sua
+   cella e appena scrivi ne compare un'altra. Ognuno diventa un
+   nominativo suo. Invio salta alla cella dopo.
+4. Le note (citofono, cassetta) stanno nella stessa scheda.
+5. La barra in alto cerca ovunque: nomi, vie, civici, note. Tasto "/".
 
 DOVE SONO I DATI
 Solo sul dispositivo, dentro il browser. Niente internet, nessun account.
+Se vuoi che PC e telefono lavorino sullo stesso archivio si puo' accendere
+la sincronizzazione: istruzioni in SINCRONIZZAZIONE.txt. Finche' non la
+configuri non cambia niente e i dati non escono da qui.
 Attenzione: ogni indirizzo e' un archivio a se'. I dati inseriti aprendo
 il vecchio file "stradario.html" col doppio clic NON si vedono su
 http://localhost:8080 e viceversa. Anche PC e telefono sono archivi separati.

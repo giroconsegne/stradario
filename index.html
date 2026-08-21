@@ -51,8 +51,17 @@
   button.ghost{background:transparent}
   button.link{border:0; background:none; color:var(--accent); padding:4px 6px; text-decoration:underline}
   button.danger{color:var(--danger)}
+  button.danger-pieno{background:var(--danger); border-color:var(--danger); color:#fff}
+  button.danger-pieno:hover{filter:brightness(1.08)}
+  #dlgConf{width:min(400px, 92vw)}
+  #dlgConf h3{margin-bottom:6px}
+  #dlgConf .hint{margin:0; line-height:1.45}
   .icon{border:0; background:none; padding:6px 8px; font-size:16px; color:var(--muted); border-radius:8px}
   .icon:hover{background:var(--bg); color:var(--text)}
+  #btnSync[data-stato="ok"]{color:var(--ok)}
+  #btnSync[data-stato="errore"]{color:var(--danger)}
+  #btnSync[data-stato="corso"]{animation:pulsa 1.1s ease-in-out infinite}
+  @keyframes pulsa{50%{opacity:.35}}
   .row{display:flex; align-items:center; gap:8px}
   .between{display:flex; align-items:center; justify-content:space-between; gap:10px}
   .card{background:var(--card); border:1px solid var(--line); border-radius:12px;
@@ -93,6 +102,10 @@
     width:100%; padding:9px 10px; border-radius:9px; border:1px solid var(--line);
     background:var(--card); color:var(--text); font:inherit; outline:none}
   input:focus, textarea:focus, select:focus{border-color:var(--accent)}
+  .nomi{display:flex; flex-direction:column; gap:6px}
+  .nome-riga{display:flex; align-items:center; gap:4px}
+  .nome-riga input{flex:1}
+  .nome-riga .icon{flex:none; font-size:18px; line-height:1}
   dialog{border:0; border-radius:14px; padding:0; background:var(--card); color:var(--text);
     box-shadow:0 20px 60px rgba(0,0,0,.35); width:min(460px, 94vw)}
   dialog::backdrop{background:rgba(0,0,0,.45)}
@@ -116,11 +129,12 @@
 
 <header>
   <div class="top">
-    <div class="logo">Stradario<small>Casellario — dati locali</small></div>
+    <div class="logo">Stradario<small id="sottotitolo">Casellario — dati locali</small></div>
     <div class="search">
       <span>&#128269;</span>
       <input id="q" type="search" placeholder="Cerca nome, via, civico…" autocomplete="off">
     </div>
+    <button class="icon" id="btnSync" title="Sincronizzazione" hidden>&#9729;</button>
     <button class="icon" id="btnMenu" title="Backup e impostazioni">&#9881;</button>
   </div>
 </header>
@@ -174,8 +188,9 @@
         <select id="abVia"></select>
       </div>
       <div class="field">
-        <label for="abNome">Cognome e nome *</label>
-        <input type="text" id="abNome" placeholder="Es. Rossi Mario" required>
+        <label>Cognome e nome *</label>
+        <div id="abNomi" class="nomi"></div>
+        <p class="hint" style="margin:5px 0 0">Pi&ugrave; nomi allo stesso indirizzo: appena scrivi compare la cella dopo. Invio ci salta dentro.</p>
       </div>
       <div class="grid2">
         <div class="field">
@@ -185,16 +200,6 @@
         <div class="field">
           <label for="abInterno">Interno</label>
           <input type="text" id="abInterno" placeholder="Es. 5 (se presente)">
-        </div>
-      </div>
-      <div class="grid2">
-        <div class="field">
-          <label for="abScala">Scala / palazzina</label>
-          <input type="text" id="abScala" placeholder="Facoltativo">
-        </div>
-        <div class="field">
-          <label for="abPiano">Piano</label>
-          <input type="text" id="abPiano" placeholder="Facoltativo">
         </div>
       </div>
       <div class="field">
@@ -212,6 +217,41 @@
   </form>
 </dialog>
 
+<!-- Dialog CONFERMA (al posto del confirm() del browser) -->
+<dialog id="dlgConf">
+  <div class="dlg-body">
+    <h3 id="confTitolo"></h3>
+    <p class="hint" id="confTesto"></p>
+  </div>
+  <div class="dlg-actions" style="justify-content:flex-end">
+    <button type="button" class="ghost" id="confNo">Annulla</button>
+    <button type="button" id="confSi">Elimina</button>
+  </div>
+</dialog>
+
+<!-- Dialog COLLEGAMENTO SINCRONIZZAZIONE -->
+<dialog id="dlgSync">
+  <div class="dlg-body">
+    <h3>Collega questo dispositivo</h3>
+    <p class="hint" style="margin:0 0 14px">Email e password dell'utente creato nella console Firebase.
+      La password non viene salvata: resta memorizzato solo il permesso di questo dispositivo,
+      che puoi togliere quando vuoi con &laquo;Scollega&raquo;.</p>
+    <div class="field">
+      <label for="syncEmail">Email</label>
+      <input type="email" id="syncEmail" autocomplete="username" placeholder="tu@esempio.it">
+    </div>
+    <div class="field">
+      <label for="syncPwd">Password</label>
+      <input type="password" id="syncPwd" autocomplete="current-password">
+    </div>
+    <p class="hint" id="syncErrore" style="color:var(--danger); margin:0" hidden></p>
+  </div>
+  <div class="dlg-actions" style="justify-content:flex-end">
+    <button type="button" class="ghost" data-close="dlgSync">Annulla</button>
+    <button type="button" class="primary" id="btnEntra">Entra</button>
+  </div>
+</dialog>
+
 <!-- Dialog MENU / BACKUP -->
 <dialog id="dlgMenu">
   <div class="dlg-body">
@@ -220,8 +260,7 @@
       <button class="primary" id="btnInstall" style="width:100%">&#128241; Installa l'app sul dispositivo</button>
       <p class="hint" style="margin:6px 0 0">Aggiunge l'icona e la fa partire a schermo intero, anche senza rete.</p>
     </div>
-    <p class="hint">I dati stanno solo su questo dispositivo, dentro il browser.
-      Esporta ogni tanto un file di backup: se cambi browser o pulisci la cronologia, senza backup i dati si perdono.</p>
+    <p class="hint" id="doveStanno"></p>
     <div class="field" style="margin-top:16px">
       <button class="primary" id="btnExport" style="width:100%">&#11015; Esporta backup (.json)</button>
     </div>
@@ -231,6 +270,17 @@
     </div>
     <div class="field">
       <button id="btnCsv" style="width:100%">&#128203; Esporta elenco in CSV (per Excel)</button>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--line); margin:18px 0">
+    <div class="between" style="margin-bottom:4px">
+      <b>Sincronizzazione</b>
+      <span class="hint" id="syncStato"></span>
+    </div>
+    <p class="hint" id="syncSpiega" style="margin:0"></p>
+    <div class="row" style="margin-top:10px; flex-wrap:wrap">
+      <button id="btnCollega" hidden>Collega questo dispositivo</button>
+      <button id="btnSyncOra" hidden>Sincronizza adesso</button>
+      <button class="danger ghost" id="btnScollega" hidden>Scollega</button>
     </div>
     <hr style="border:0;border-top:1px solid var(--line); margin:18px 0">
     <p class="hint" id="stats"></p>
@@ -256,10 +306,10 @@ function load(){
     const raw = localStorage.getItem(KEY);
     if(raw){
       const d = JSON.parse(raw);
-      if(Array.isArray(d.vie) && Array.isArray(d.abitanti)) return d;
+      if(Array.isArray(d.vie) && Array.isArray(d.abitanti)) return normalizza(d);
     }
   }catch(e){ console.warn("Archivio illeggibile", e); }
-  return { version:1, vie:[], abitanti:[] };
+  return normalizza({ version:1, vie:[], abitanti:[] });
 }
 function save(){
   try{
@@ -267,9 +317,30 @@ function save(){
   }catch(e){
     alert("Impossibile salvare i dati nel browser: " + e.message);
   }
+  programmaSync();
 }
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 
+/* Ogni record si porta dietro "agg", l'ora dell'ultima modifica, e le cancellazioni
+   lasciano una traccia in "cancellati". Servono alla sincronizzazione: senza l'ora
+   non si sa quale versione è la più fresca, e senza la traccia un nominativo
+   cancellato qui tornerebbe indietro dall'altro dispositivo. Gli archivi vecchi
+   non hanno né l'una né l'altra: si aggiungono qui, alla prima apertura. */
+const SCADENZA_TOMBE = 180*24*60*60*1000;   // dopo sei mesi la traccia si butta
+
+function normalizza(d){
+  d.version = 1;
+  const ora = Date.now();
+  d.cancellati = (Array.isArray(d.cancellati) ? d.cancellati : [])
+    .filter(t => t && t.id && t.agg > ora - SCADENZA_TOMBE);
+  for(const r of [...d.vie, ...d.abitanti]) if(!r.agg) r.agg = ora;
+  return d;
+}
+const tocca = r => { if(r) r.agg = Date.now(); return r; };
+function segnaCancellati(ids){
+  const ora = Date.now();
+  ids.forEach(id => db.cancellati.push({id, agg:ora}));
+}
 /* ---------------- Utilità ---------------- */
 const norm = s => (s||"").toString().toLowerCase()
   .normalize("NFD").replace(new RegExp("[\u0300-\u036f]","g"),"").trim();
@@ -306,13 +377,20 @@ function abitantiOrdinati(list){
     norm(a.nome).localeCompare(norm(b.nome))
   );
 }
+/* Ripulisce una lista di nomi: via gli spazi, le voci vuote e i doppioni. */
+function nomiPuliti(lista){
+  const visti = new Set();
+  return lista.map(n => (n||"").trim()).filter(n=>{
+    if(!n || visti.has(norm(n))) return false;
+    visti.add(norm(n));
+    return true;
+  });
+}
 function indirizzo(a){
   const v = via(a.viaId);
   let s = v ? v.nome : "(via eliminata)";
   if(a.civico) s += ", " + a.civico;
-  if(a.scala) s += " sc. " + a.scala;
   if(a.interno) s += " int. " + a.interno;
-  if(a.piano) s += " p. " + a.piano;
   return s;
 }
 function highlight(text, q){
@@ -329,6 +407,30 @@ function toast(msg){
   t.textContent = msg; t.classList.add("show");
   clearTimeout(toast._t);
   toast._t = setTimeout(()=> t.classList.remove("show"), 1900);
+}
+
+const conta = (n, singolare, plurale) => n + " " + (n === 1 ? singolare : plurale);
+
+/* Richiesta di conferma in stile app, al posto del confirm() del browser.
+   Restituisce una promessa: true se si va avanti, false se si annulla.
+   Il fuoco parte da "Annulla", così l'Invio battuto per sbaglio non cancella niente. */
+function chiedi({titolo, testo = "", conferma = "Elimina", pericolo = true}){
+  const dlg = document.getElementById("dlgConf");
+  document.getElementById("confTitolo").textContent = titolo;
+  const t = document.getElementById("confTesto");
+  t.textContent = testo;
+  t.hidden = !testo;
+  const si = document.getElementById("confSi"), no = document.getElementById("confNo");
+  si.textContent = conferma;
+  si.className = pericolo ? "danger-pieno" : "primary";
+  return new Promise(risolvi=>{
+    const chiudi = esito => { dlg.close(); risolvi(esito); };
+    si.onclick = ()=> chiudi(true);
+    no.onclick = ()=> chiudi(false);
+    dlg.oncancel = ev => { ev.preventDefault(); chiudi(false); };   // tasto Esc
+    dlg.showModal();
+    no.focus();
+  });
 }
 
 /* ---------------- Render ---------------- */
@@ -403,11 +505,7 @@ function renderVia(v){
             <div class="person">
               <div class="who">
                 <b>${esc(a.nome)}</b>
-                <div class="meta">${[
-                  a.interno ? "int. "+esc(a.interno) : "",
-                  a.scala ? "sc. "+esc(a.scala) : "",
-                  a.piano ? "piano "+esc(a.piano) : ""
-                ].filter(Boolean).join(" · ") || "&nbsp;"}</div>
+                <div class="meta">${a.interno ? "int. "+esc(a.interno) : "&nbsp;"}</div>
                 ${a.note ? `<div class="note">${esc(a.note)}</div>`:""}
               </div>
               <button class="icon" title="Modifica" onclick="apriAbitante('${a.id}')">&#9998;</button>
@@ -482,7 +580,7 @@ function apriVia(id){
   d.showModal();
   setTimeout(()=> document.getElementById("viaNome").focus(), 50);
 }
-document.getElementById("viaSave").onclick = ()=>{
+document.getElementById("viaSave").onclick = async ()=>{
   const nome = document.getElementById("viaNome").value.trim();
   if(!nome){ toast("Il nome della via è obbligatorio"); return; }
   const dati = {
@@ -492,12 +590,17 @@ document.getElementById("viaSave").onclick = ()=>{
     note: document.getElementById("viaNote").value.trim()
   };
   if(editing.viaId){
-    Object.assign(via(editing.viaId), dati);
+    tocca(Object.assign(via(editing.viaId), dati));
     toast("Via aggiornata");
   }else{
     const doppione = db.vie.find(v => norm(v.nome) === norm(nome));
-    if(doppione && !confirm(`“${doppione.nome}” esiste già. Vuoi crearla comunque?`)) return;
-    const nuova = {id:uid(), ...dati};
+    if(doppione && !await chiedi({
+      titolo: `“${doppione.nome}” c'è già`,
+      testo: "Puoi crearla lo stesso, ma poi in elenco ne compaiono due uguali.",
+      conferma: "Crea comunque",
+      pericolo: false
+    })) return;
+    const nuova = tocca({id:uid(), ...dati});
     db.vie.push(nuova);
     view = {page:"via", viaId:nuova.id};
     toast("Via creata");
@@ -506,11 +609,17 @@ document.getElementById("viaSave").onclick = ()=>{
   document.getElementById("dlgVia").close();
   render();
 };
-document.getElementById("viaDelete").onclick = ()=>{
+document.getElementById("viaDelete").onclick = async ()=>{
   const v = via(editing.viaId); if(!v) return;
   const n = abitantiDiVia(v.id).length;
-  const msg = n ? `Eliminare “${v.nome}” e i suoi ${n} nominativi?` : `Eliminare “${v.nome}”?`;
-  if(!confirm(msg)) return;
+  const ok = await chiedi({
+    titolo: `Eliminare “${v.nome}”?`,
+    testo: n === 0 ? "Non si può annullare."
+      : n === 1 ? "Se ne va anche l'unico nominativo di questa via. Non si può annullare."
+      : `Se ne vanno anche i ${n} nominativi di questa via. Non si può annullare.`
+  });
+  if(!ok) return;
+  segnaCancellati([v.id, ...abitantiDiVia(v.id).map(a => a.id)]);
   db.abitanti = db.abitanti.filter(a => a.viaId !== v.id);
   db.vie = db.vie.filter(x => x.id !== v.id);
   save();
@@ -520,6 +629,47 @@ document.getElementById("viaDelete").onclick = ()=>{
 };
 
 /* ---------------- Form: ABITANTE ---------------- */
+/* Le celle dei nomi: una per nominativo, e ne resta sempre una vuota pronta. */
+const boxNomi = () => document.getElementById("abNomi");
+
+function cellaNome(valore){
+  const riga = document.createElement("div");
+  riga.className = "nome-riga";
+
+  const inp = document.createElement("input");
+  inp.type = "text";
+  inp.placeholder = "Es. Rossi Mario";
+  inp.value = valore || "";
+  inp.oninput = sistemaCelle;
+  inp.onkeydown = ev=>{
+    if(ev.key !== "Enter") return;
+    ev.preventDefault();               // senza questo il dialog si chiuderebbe
+    const succ = riga.nextElementSibling;
+    if(succ) succ.querySelector("input").focus();
+  };
+
+  const togli = document.createElement("button");
+  togli.type = "button";
+  togli.className = "icon";
+  togli.title = "Togli questo nome";
+  togli.innerHTML = "&times;";
+  togli.onclick = ()=>{ riga.remove(); sistemaCelle(); };
+
+  riga.append(inp, togli);
+  boxNomi().append(riga);
+  return inp;
+}
+
+function sistemaCelle(){
+  const box = boxNomi();
+  const ultima = box.lastElementChild.querySelector("input");
+  if(ultima.value.trim()) cellaNome("");
+  const sola = box.children.length === 1;
+  [...box.children].forEach(r => r.querySelector("button").style.visibility = sola ? "hidden" : "visible");
+}
+
+const nomiDelForm = () => nomiPuliti([...boxNomi().querySelectorAll("input")].map(i=>i.value));
+
 function apriAbitante(id, viaIdPredefinita, nomePrecompilato){
   if(!db.vie.length){
     toast("Crea prima una via");
@@ -533,35 +683,35 @@ function apriAbitante(id, viaIdPredefinita, nomePrecompilato){
   sel.value = a ? a.viaId : (viaIdPredefinita || view.viaId || sel.options[0].value);
 
   document.getElementById("abTitle").textContent = a ? "Modifica nominativo" : "Nuovo nominativo";
-  document.getElementById("abNome").value    = a ? a.nome : (nomePrecompilato || "");
+  boxNomi().innerHTML = "";
+  cellaNome(a ? a.nome : (nomePrecompilato || ""));
+  sistemaCelle();
   document.getElementById("abCivico").value  = a ? (a.civico||"") : "";
   document.getElementById("abInterno").value = a ? (a.interno||"") : "";
-  document.getElementById("abScala").value   = a ? (a.scala||"") : "";
-  document.getElementById("abPiano").value   = a ? (a.piano||"") : "";
   document.getElementById("abNote").value    = a ? (a.note||"") : "";
   document.getElementById("abDelete").style.visibility = a ? "visible" : "hidden";
   document.getElementById("dlgAb").showModal();
-  setTimeout(()=> document.getElementById("abNome").focus(), 50);
+  setTimeout(()=> boxNomi().querySelector("input").focus(), 50);
 }
 document.getElementById("abSave").onclick = ()=>{
-  const nome = document.getElementById("abNome").value.trim();
+  const nomi = nomiDelForm();
   const civico = document.getElementById("abCivico").value.trim();
-  if(!nome){ toast("Cognome e nome sono obbligatori"); return; }
+  if(!nomi.length){ toast("Cognome e nome sono obbligatori"); return; }
   if(!civico){ toast("Il numero civico è obbligatorio"); return; }
   const dati = {
     viaId: document.getElementById("abVia").value,
-    nome, civico,
+    civico,
     interno: document.getElementById("abInterno").value.trim(),
-    scala:   document.getElementById("abScala").value.trim(),
-    piano:   document.getElementById("abPiano").value.trim(),
     note:    document.getElementById("abNote").value.trim()
   };
   if(editing.abId){
-    Object.assign(db.abitanti.find(x=>x.id===editing.abId), dati);
-    toast("Nominativo aggiornato");
+    // la prima cella aggiorna la scheda aperta, le eventuali altre diventano nuovi nominativi
+    tocca(Object.assign(db.abitanti.find(x=>x.id===editing.abId), dati, {nome:nomi[0]}));
+    nomi.slice(1).forEach(nome => db.abitanti.push(tocca({id:uid(), ...dati, nome})));
+    toast(nomi.length>1 ? "Aggiornato, più altri " + (nomi.length-1) : "Nominativo aggiornato");
   }else{
-    db.abitanti.push({id:uid(), ...dati});
-    toast("Nominativo aggiunto");
+    nomi.forEach(nome => db.abitanti.push(tocca({id:uid(), ...dati, nome})));
+    toast(nomi.length>1 ? nomi.length + " nominativi aggiunti" : "Nominativo aggiunto");
   }
   view = {page:"via", viaId:dati.viaId};
   qbox.value = "";
@@ -569,9 +719,22 @@ document.getElementById("abSave").onclick = ()=>{
   document.getElementById("dlgAb").close();
   render();
 };
-document.getElementById("abDelete").onclick = ()=>{
+/* Invio negli altri campi: salva, invece di chiudere il dialog buttando via tutto.
+   Nelle celle dei nomi l'Invio è già stato gestito (defaultPrevented). */
+document.getElementById("dlgAb").addEventListener("keydown", ev=>{
+  if(ev.key === "Enter" && !ev.defaultPrevented && ev.target.tagName === "INPUT"){
+    ev.preventDefault();
+    document.getElementById("abSave").click();
+  }
+});
+document.getElementById("abDelete").onclick = async ()=>{
   const a = db.abitanti.find(x=>x.id===editing.abId); if(!a) return;
-  if(!confirm(`Eliminare “${a.nome}”?`)) return;
+  const ok = await chiedi({
+    titolo: `Eliminare “${a.nome}”?`,
+    testo: indirizzo(a) + " — non si può annullare."
+  });
+  if(!ok) return;
+  segnaCancellati([a.id]);
   db.abitanti = db.abitanti.filter(x=>x.id!==a.id);
   save();
   document.getElementById("dlgAb").close();
@@ -582,11 +745,12 @@ document.getElementById("abDelete").onclick = ()=>{
 /* Inserimento rapido dentro la via */
 function quickAdd(ev, viaId){
   ev.preventDefault();
-  const nome = document.getElementById("qNome").value.trim();
+  const nomi = nomiPuliti([document.getElementById("qNome").value]);
   const civico = document.getElementById("qCiv").value.trim();
   const interno = document.getElementById("qInt").value.trim();
-  if(!nome || !civico) return false;
-  db.abitanti.push({id:uid(), viaId, nome, civico, interno, scala:"", piano:"", note:""});
+  if(!nomi.length || !civico) return false;
+  const nome = nomi[0];
+  db.abitanti.push(tocca({id:uid(), viaId, nome, civico, interno, note:""}));
   save();
   render();
   // ripristina il civico e rimetti il fuoco sul nome: inserimento a raffica
@@ -615,10 +779,10 @@ document.getElementById("btnExport").onclick = ()=>{
 };
 document.getElementById("btnCsv").onclick = ()=>{
   const q = s => `"${(s||"").toString().replace(/"/g,'""')}"`;
-  const righe = [["Via","CAP","Località","Civico","Scala","Interno","Piano","Cognome e nome","Note"].map(q).join(";")];
+  const righe = [["Via","CAP","Località","Civico","Interno","Cognome e nome","Note"].map(q).join(";")];
   for(const v of vieOrdinate()){
     for(const a of abitantiOrdinati(abitantiDiVia(v.id))){
-      righe.push([v.nome, v.cap, v.localita, a.civico, a.scala, a.interno, a.piano, a.nome, a.note].map(q).join(";"));
+      righe.push([v.nome, v.cap, v.localita, a.civico, a.interno, a.nome, a.note].map(q).join(";"));
     }
   }
   scarica(`stradario_${stamp()}.csv`, "﻿" + righe.join("\r\n"), "text/csv");
@@ -639,16 +803,21 @@ document.getElementById("fileImport").onchange = ev=>{
       ? confirm(`Il backup contiene ${d.vie.length} vie e ${d.abitanti.length} nominativi.\n\nOK = SOSTITUISCI i dati attuali\nAnnulla = UNISCI ai dati attuali`)
       : true;
     if(scelta){
-      db = {version:1, vie:d.vie, abitanti:d.abitanti};
+      // quello che c'era prima va segnato come cancellato, se no torna
+      // indietro dall'altro dispositivo alla prima sincronizzazione
+      const vecchi = [...db.vie, ...db.abitanti].map(r => r.id);
+      db = normalizza({version:1, vie:d.vie, abitanti:d.abitanti, cancellati:db.cancellati});
+      const rimasti = new Set([...db.vie, ...db.abitanti].map(r => r.id));
+      segnaCancellati(vecchi.filter(id => !rimasti.has(id)));
     }else{
       const mappa = {};
       for(const v of d.vie){
         const esistente = db.vie.find(x => norm(x.nome) === norm(v.nome));
         if(esistente){ mappa[v.id] = esistente.id; }
-        else{ const nid = uid(); mappa[v.id] = nid; db.vie.push({...v, id:nid}); }
+        else{ const nid = uid(); mappa[v.id] = nid; db.vie.push(tocca({...v, id:nid})); }
       }
       for(const a of d.abitanti){
-        db.abitanti.push({...a, id:uid(), viaId: mappa[a.viaId] || a.viaId});
+        db.abitanti.push(tocca({...a, id:uid(), viaId: mappa[a.viaId] || a.viaId}));
       }
     }
     save();
@@ -659,10 +828,16 @@ document.getElementById("fileImport").onchange = ev=>{
   fr.readAsText(file);
   ev.target.value = "";
 };
-document.getElementById("btnWipe").onclick = ()=>{
-  if(!confirm("Cancellare TUTTI i dati? L'operazione non si può annullare.")) return;
-  if(!confirm("Sei proprio sicuro? Esporta prima un backup se non l'hai fatto.")) return;
-  db = {version:1, vie:[], abitanti:[]};
+document.getElementById("btnWipe").onclick = async ()=>{
+  const ok = await chiedi({
+    titolo: "Cancellare tutto l'archivio?",
+    testo: `Spariscono ${conta(db.vie.length,"via","vie")} e ${conta(db.abitanti.length,"nominativo","nominativi")}, e non si torna indietro. Se non hai un backup, annulla ed esportalo prima.`,
+    conferma: "Cancella tutto"
+  });
+  if(!ok) return;
+  if(!await chiedi({titolo:"Sicuro?", testo:"Ultima chiamata.", conferma:"Sì, cancella"})) return;
+  segnaCancellati([...db.vie, ...db.abitanti].map(r => r.id));
+  db = {version:1, vie:[], abitanti:[], cancellati:db.cancellati};
   save();
   document.getElementById("dlgMenu").close();
   vaiVie();
@@ -672,6 +847,7 @@ document.getElementById("btnMenu").onclick = ()=>{
   document.getElementById("stats").textContent =
     `Archivio: ${db.vie.length} vie, ${db.abitanti.length} nominativi.`;
   aggiornaStatoOffline();
+  aggiornaPannelloSync();
   document.getElementById("dlgMenu").showModal();
 };
 
@@ -696,6 +872,323 @@ async function aggiornaStatoOffline(){
     el.textContent = "Uso senza rete: non disponibile (" + e.message + ")";
   }
 }
+
+/* ---------------- Sincronizzazione (Firebase) ----------------
+   L'app continua a lavorare sull'archivio locale: la rete serve solo a
+   scambiare le novità con gli altri dispositivi, quindi senza rete
+   funziona tutto lo stesso e si recupera alla prima occasione.
+
+   I due valori qui sotto si prendono dalla console Firebase (Impostazioni
+   progetto > le tue app > configurazione). NON sono password: la chiave web
+   è fatta per stare dentro la pagina, in chiaro. A proteggere l'archivio
+   sono la password dell'utente e le regole di sicurezza del database.
+   Le istruzioni passo passo stanno in SINCRONIZZAZIONE.txt. */
+const FIREBASE = {
+  apiKey:   "AIzaSyDvpJaygPDOKs9t8f1LbgOlTR2TmAEFCII",
+  progetto: "stradario-173c6"
+};
+
+const KEY_SESSIONE = "stradario.sync.v1";
+let sessione = leggiSessione();      // {refreshToken, email, uid, ultimo}
+let idToken = null, scadenzaToken = 0;
+let sincronizzando = false;
+let statoSync = {stato: "spento", dettaglio: ""};
+
+const syncConfigurato = () => !!(FIREBASE.apiKey && FIREBASE.progetto);
+const syncAttivo = () => syncConfigurato() && !!(sessione && sessione.refreshToken);
+
+function leggiSessione(){
+  try{ return JSON.parse(localStorage.getItem(KEY_SESSIONE)) || null; }
+  catch(e){ return null; }
+}
+function salvaSessione(){
+  if(sessione) localStorage.setItem(KEY_SESSIONE, JSON.stringify(sessione));
+  else localStorage.removeItem(KEY_SESSIONE);
+}
+
+/* Una fetch che tira su un errore leggibile invece di una risposta muta. */
+async function chiamata(url, opzioni){
+  let res;
+  try{ res = await fetch(url, opzioni); }
+  catch(e){ const err = new Error("rete"); err.rete = true; throw err; }
+  const testo = await res.text();
+  let dati = null;
+  try{ dati = testo ? JSON.parse(testo) : null; }catch(e){}
+  if(!res.ok){
+    const err = new Error(String((dati && dati.error && (dati.error.message || dati.error.status)) || res.status));
+    err.stato = res.status;
+    throw err;
+  }
+  return dati;
+}
+
+function messaggioErrore(e){
+  if(e.rete) return "nessuna rete";
+  const m = e.message || "";
+  if(/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL/.test(m)) return "email o password sbagliati";
+  if(/TOO_MANY_ATTEMPTS/.test(m)) return "troppi tentativi, riprova più tardi";
+  if(/USER_DISABLED/.test(m)) return "utente disattivato nella console Firebase";
+  if(/PERMISSION_DENIED/.test(m)) return "permesso negato: controlla le regole di sicurezza";
+  if(/NOT_FOUND/.test(m)) return "database non trovato: controlla il nome del progetto";
+  if(/troppo grande/.test(m)) return m;
+  return m;
+}
+
+/* Sessione scaduta o revocata: si riparte dal collegamento. */
+function sessionePersa(){
+  sessione = null; idToken = null; salvaSessione();
+  mostraStato("scollegato");
+  toast("Collegamento scaduto: rientra dall'ingranaggio");
+}
+
+async function entra(email, password){
+  const d = await chiamata(
+    "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + FIREBASE.apiKey,
+    {method:"POST", headers:{"Content-Type":"application/json"},
+     body: JSON.stringify({email, password, returnSecureToken:true})});
+  sessione = {refreshToken:d.refreshToken, email:d.email, uid:d.localId, ultimo:0};
+  idToken = d.idToken;
+  scadenzaToken = Date.now() + (Number(d.expiresIn)||3600)*1000 - 60000;
+  salvaSessione();
+}
+
+async function token(){
+  if(idToken && Date.now() < scadenzaToken) return idToken;
+  let d;
+  try{
+    d = await chiamata("https://securetoken.googleapis.com/v1/token?key=" + FIREBASE.apiKey,
+      {method:"POST", headers:{"Content-Type":"application/x-www-form-urlencoded"},
+       body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(sessione.refreshToken)});
+  }catch(e){
+    if(!e.rete){ sessionePersa(); }
+    throw e;
+  }
+  idToken = d.id_token;
+  scadenzaToken = Date.now() + (Number(d.expires_in)||3600)*1000 - 60000;
+  if(d.refresh_token && d.refresh_token !== sessione.refreshToken){
+    sessione.refreshToken = d.refresh_token;
+    salvaSessione();
+  }
+  return idToken;
+}
+
+/* L'archivio sta tutto dentro un documento solo, come testo JSON: è piccolo
+   (qualche decina di kB) e così basta una lettura e una scrittura per volta. */
+const urlDoc = () => "https://firestore.googleapis.com/v1/projects/" + FIREBASE.progetto
+  + "/databases/(default)/documents/archivi/" + sessione.uid;
+
+async function leggiRemoto(){
+  const t = await token();
+  try{
+    const d = await chiamata(urlDoc(), {headers:{Authorization:"Bearer " + t}});
+    const grezzo = d.fields && d.fields.dati && d.fields.dati.stringValue;
+    return {archivio: grezzo ? JSON.parse(grezzo) : null, updateTime: d.updateTime};
+  }catch(e){
+    if(e.stato === 404) return {archivio:null, updateTime:null};   // primo giro
+    throw e;
+  }
+}
+
+async function scriviRemoto(archivio, updateTime){
+  const t = await token();
+  const corpo = JSON.stringify(archivio);
+  if(corpo.length > 900000) throw new Error("archivio troppo grande per la sincronizzazione");
+  // la condizione fa fallire la scrittura se nel frattempo ha scritto un altro
+  // dispositivo: meglio rileggere e rifondere che sovrascrivere il suo lavoro
+  const url = urlDoc() + "?" + (updateTime
+    ? "currentDocument.updateTime=" + encodeURIComponent(updateTime)
+    : "currentDocument.exists=false");
+  const d = await chiamata(url, {
+    method:"PATCH",
+    headers:{Authorization:"Bearer " + t, "Content-Type":"application/json"},
+    body: JSON.stringify({fields:{
+      dati: {stringValue: corpo},
+      agg:  {integerValue: String(Date.now())}
+    }})
+  });
+  return d.updateTime;
+}
+
+/* Fonde due archivi record per record: di ognuno vince la versione con l'ora
+   più recente, e chi risulta cancellato dopo l'ultima modifica sparisce. */
+function unisci(a, b){
+  const tombe = new Map();
+  for(const t of [...(a.cancellati||[]), ...(b.cancellati||[])]){
+    if(!t || !t.id) continue;
+    if(!tombe.has(t.id) || t.agg > tombe.get(t.id)) tombe.set(t.id, t.agg);
+  }
+  const fondi = (x, y) => {
+    const m = new Map();
+    for(const r of [...(x||[]), ...(y||[])]){
+      const p = m.get(r.id);
+      if(!p || (r.agg||0) > (p.agg||0)) m.set(r.id, r);
+    }
+    return [...m.values()].filter(r => !(tombe.has(r.id) && tombe.get(r.id) >= (r.agg||0)));
+  };
+  const limite = Date.now() - SCADENZA_TOMBE;
+  return {
+    version: 1,
+    vie: fondi(a.vie, b.vie),
+    abitanti: fondi(a.abitanti, b.abitanti),
+    cancellati: [...tombe].map(([id, agg]) => ({id, agg})).filter(t => t.agg > limite)
+  };
+}
+
+async function sincronizza({silenzioso = true} = {}){
+  if(!syncAttivo() || sincronizzando) return;
+  if(!navigator.onLine){
+    mostraStato("attesa", "nessuna rete");
+    if(!silenzioso) toast("Nessuna rete: sincronizzo appena torna");
+    return;
+  }
+  sincronizzando = true;
+  mostraStato("corso");
+  try{
+    for(let tentativo = 0; tentativo < 3; tentativo++){
+      const remoto = await leggiRemoto();
+      const unito = unisci(db, remoto.archivio || {vie:[], abitanti:[], cancellati:[]});
+      let updateTime;
+      try{
+        updateTime = await scriviRemoto(unito, remoto.updateTime);
+      }catch(e){
+        // ha scritto un altro dispositivo mentre eravamo a metà: si rilegge
+        if(e.stato === 409 || e.stato === 412 || /FAILED_PRECONDITION|ALREADY_EXISTS/.test(e.message||"")) continue;
+        throw e;
+      }
+      db = unito;
+      save._zitto = true;            // il salvataggio qui non deve richiamare la sync
+      save();
+      save._zitto = false;
+      sessione.ultimo = Date.now();
+      salvaSessione();
+      render();
+      mostraStato("ok");
+      if(!silenzioso) toast("Sincronizzato");
+      return;
+    }
+    throw new Error("gli altri dispositivi stanno scrivendo, riprova tra poco");
+  }catch(e){
+    console.warn("Sincronizzazione:", e);
+    mostraStato(e.rete ? "attesa" : "errore", messaggioErrore(e));
+    if(!silenzioso) toast("Non riuscita: " + messaggioErrore(e));
+  }finally{
+    sincronizzando = false;
+  }
+}
+
+/* Dopo ogni modifica si aspetta qualche secondo (magari ne arrivano altre) e
+   si manda tutto insieme. Con un dialog aperto si rimanda: rifare la pagina
+   sotto le mani di chi sta scrivendo è sgradevole. */
+let attesaSync = null;
+function programmaSync(){
+  if(save._zitto || !syncAttivo()) return;
+  clearTimeout(attesaSync);
+  attesaSync = setTimeout(()=>{
+    if(document.querySelector("dialog[open]")) return programmaSync();
+    sincronizza();
+  }, 2500);
+}
+
+/* ---- Stato mostrato all'utente ---- */
+const NOMI_STATO = {
+  spento: "", scollegato: "Non collegato", corso: "Sincronizzo…",
+  ok: "Aggiornato", attesa: "In attesa di rete", errore: "Errore"
+};
+function quando(ms){
+  if(!ms) return "mai";
+  const min = Math.round((Date.now()-ms)/60000);
+  if(min < 1) return "adesso";
+  if(min < 60) return min + " min fa";
+  const d = new Date(ms), p = n => String(n).padStart(2,"0");
+  return "alle " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+function mostraStato(stato, dettaglio){
+  statoSync = {stato, dettaglio: dettaglio || ""};
+  const b = document.getElementById("btnSync");
+  b.hidden = !syncAttivo() && stato !== "corso";
+  b.dataset.stato = stato;
+  b.title = NOMI_STATO[stato] + (dettaglio ? " — " + dettaglio : "")
+    + (syncAttivo() ? " · ultima: " + quando(sessione.ultimo) : "");
+  document.getElementById("sottotitolo").textContent =
+    syncAttivo() ? "Casellario — archivio in rete" : "Casellario — dati locali";
+  aggiornaPannelloSync();
+}
+function aggiornaPannelloSync(){
+  const stato = document.getElementById("syncStato");
+  const spiega = document.getElementById("syncSpiega");
+  if(!stato) return;
+  document.getElementById("doveStanno").textContent = syncAttivo()
+    ? "I dati stanno su questo dispositivo e in rete, allineati fra loro. Il backup su file "
+      + "conviene farlo lo stesso ogni tanto: è l'unica copia che rimane tua e basta."
+    : "I dati stanno solo su questo dispositivo, dentro il browser. Esporta ogni tanto un file "
+      + "di backup: se cambi browser o pulisci la cronologia, senza backup i dati si perdono.";
+  if(!syncConfigurato()){
+    stato.textContent = "non impostata";
+    spiega.textContent = "Per tenere allineati PC e telefono va compilata la configurazione "
+      + "Firebase dentro index.html: le istruzioni sono in SINCRONIZZAZIONE.txt.";
+  }else if(!syncAttivo()){
+    stato.textContent = "non collegato";
+    spiega.textContent = "I dati stanno solo su questo dispositivo. Collegalo per condividere "
+      + "l'archivio con gli altri tuoi dispositivi.";
+  }else{
+    stato.textContent = NOMI_STATO[statoSync.stato] + (statoSync.dettaglio ? " (" + statoSync.dettaglio + ")" : "");
+    spiega.textContent = sessione.email + " · ultima sincronizzazione " + quando(sessione.ultimo)
+      + ". I nominativi sono anche sui server Google, non solo qui.";
+  }
+  document.getElementById("btnCollega").hidden = !syncConfigurato() || syncAttivo();
+  document.getElementById("btnSyncOra").hidden = !syncAttivo();
+  document.getElementById("btnScollega").hidden = !syncAttivo();
+}
+
+/* ---- Collegamento del dispositivo ---- */
+document.getElementById("btnCollega").onclick = ()=>{
+  document.getElementById("syncErrore").hidden = true;
+  document.getElementById("syncPwd").value = "";
+  document.getElementById("dlgSync").showModal();
+  setTimeout(()=> document.getElementById("syncEmail").focus(), 50);
+};
+document.getElementById("btnEntra").onclick = async ()=>{
+  const email = document.getElementById("syncEmail").value.trim();
+  const pwd = document.getElementById("syncPwd").value;
+  const err = document.getElementById("syncErrore");
+  const btn = document.getElementById("btnEntra");
+  if(!email || !pwd){ err.textContent = "Servono email e password."; err.hidden = false; return; }
+  btn.disabled = true; btn.textContent = "Entro…";
+  try{
+    await entra(email, pwd);
+    document.getElementById("syncPwd").value = "";
+    document.getElementById("dlgSync").close();
+    mostraStato("corso");
+    await sincronizza({silenzioso:false});
+    toast("Dispositivo collegato");
+  }catch(e){
+    err.textContent = "Non entra: " + messaggioErrore(e);
+    err.hidden = false;
+  }finally{
+    btn.disabled = false; btn.textContent = "Entra";
+  }
+};
+document.getElementById("btnSyncOra").onclick = ()=> sincronizza({silenzioso:false});
+document.getElementById("btnScollega").onclick = async ()=>{
+  const ok = await chiedi({
+    titolo: "Scollegare questo dispositivo?",
+    testo: "L'archivio resta qui e resta anche in rete: smettono solo di parlarsi.",
+    conferma: "Scollega"
+  });
+  if(!ok) return;
+  sessione = null; idToken = null; salvaSessione();
+  mostraStato("scollegato");
+  toast("Dispositivo scollegato");
+};
+document.getElementById("btnSync").onclick = ()=> sincronizza({silenzioso:false});
+document.getElementById("dlgSync").addEventListener("keydown", ev=>{
+  if(ev.key === "Enter"){ ev.preventDefault(); document.getElementById("btnEntra").click(); }
+});
+
+window.addEventListener("online", ()=> sincronizza());
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "visible") sincronizza();
+});
 
 /* ---------------- Eventi generali ---------------- */
 document.querySelectorAll("[data-close]").forEach(b=>{
@@ -756,6 +1249,8 @@ if("serviceWorker" in navigator && location.protocol.startsWith("http")){
 }
 
 render();
+mostraStato(syncAttivo() ? "ok" : (syncConfigurato() ? "scollegato" : "spento"));
+sincronizza();
 </script>
 </body>
 </html>

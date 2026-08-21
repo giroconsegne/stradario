@@ -1,9 +1,11 @@
 /* Service worker dello Stradario.
    Tiene una copia dell'app sul dispositivo, così funziona anche senza rete.
-   I dati dei residenti NON passano di qui: restano nel localStorage del browser.
+   I dati dei residenti NON passano di qui: stanno nel localStorage del browser,
+   e se la sincronizzazione è accesa vanno a Firebase per conto loro (richieste
+   verso altri domini: qui sotto vengono lasciate passare senza toccarle).
    Dopo aver modificato index.html cambia il numero di versione qui sotto:
    al ricaricamento la vecchia copia viene buttata e sostituita. */
-const VERSIONE = "stradario-v1";
+const VERSIONE = "stradario-v3";
 
 const RISORSE = [
   "./",
