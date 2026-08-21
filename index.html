@@ -889,6 +889,7 @@ const FIREBASE = {
 };
 
 const KEY_SESSIONE = "stradario.sync.v1";
+const KEY_EMAIL = "stradario.sync.email";   // solo per non riscriverla ogni volta
 let sessione = leggiSessione();      // {refreshToken, email, uid, ultimo}
 let idToken = null, scadenzaToken = 0;
 let sincronizzando = false;
@@ -947,6 +948,7 @@ async function entra(email, password){
     {method:"POST", headers:{"Content-Type":"application/json"},
      body: JSON.stringify({email, password, returnSecureToken:true})});
   sessione = {refreshToken:d.refreshToken, email:d.email, uid:d.localId, ultimo:0};
+  localStorage.setItem(KEY_EMAIL, d.email);
   idToken = d.idToken;
   scadenzaToken = Date.now() + (Number(d.expiresIn)||3600)*1000 - 60000;
   salvaSessione();
@@ -1144,8 +1146,11 @@ function aggiornaPannelloSync(){
 document.getElementById("btnCollega").onclick = ()=>{
   document.getElementById("syncErrore").hidden = true;
   document.getElementById("syncPwd").value = "";
+  // l'ultima email usata qui resta scritta: dopo la prima volta basta la password
+  const email = document.getElementById("syncEmail");
+  email.value = localStorage.getItem(KEY_EMAIL) || "";
   document.getElementById("dlgSync").showModal();
-  setTimeout(()=> document.getElementById("syncEmail").focus(), 50);
+  setTimeout(()=> document.getElementById(email.value ? "syncPwd" : "syncEmail").focus(), 50);
 };
 document.getElementById("btnEntra").onclick = async ()=>{
   const email = document.getElementById("syncEmail").value.trim();
