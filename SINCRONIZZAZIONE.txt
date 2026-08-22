@@ -104,8 +104,10 @@ del passo 6.
 
 PASSO 8 - Collega i dispositivi
 -------------------------------
-Apri l'app > ingranaggio in alto a destra > "Collega questo dispositivo" >
-email e password del passo 4 > Entra.
+Apri l'app > ingranaggio in alto a destra > "Collega questo dispositivo".
+L'indirizzo e' gia' scritto nel campo (e' quello in EMAIL_PREDEFINITA dentro
+index.html): basta la password del passo 4 > Entra.
+Se cambi l'indirizzo dell'utente, cambialo anche li'.
 Da quel momento in alto compare una nuvoletta: verde = tutto allineato,
 rossa = qualcosa non va (clicca per riprovare), lampeggiante = sta lavorando.
 Ripeti la stessa cosa sul telefono, con la stessa email e la stessa password.

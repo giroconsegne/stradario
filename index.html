@@ -895,6 +895,9 @@ const FIREBASE = {
 
 const KEY_SESSIONE = "stradario.sync.v1";
 const KEY_EMAIL = "stradario.sync.email";   // solo per non riscriverla ogni volta
+/* Indirizzo già scritto nel campo: sul dispositivo nuovo si digita solo la password.
+   Deve corrispondere a un utente esistente in Firebase > Authentication > Utenti. */
+const EMAIL_PREDEFINITA = "stradari@gmail.com";
 let sessione = leggiSessione();      // {refreshToken, email, uid, ultimo}
 let idToken = null, scadenzaToken = 0;
 let sincronizzando = false;
@@ -1150,7 +1153,7 @@ document.getElementById("btnCollega").onclick = ()=>{
   document.getElementById("syncPwd").value = "";
   // l'ultima email usata qui resta scritta: dopo la prima volta basta la password
   const email = document.getElementById("syncEmail");
-  email.value = localStorage.getItem(KEY_EMAIL) || "";
+  email.value = localStorage.getItem(KEY_EMAIL) || EMAIL_PREDEFINITA;
   document.getElementById("dlgSync").showModal();
   setTimeout(()=> document.getElementById(email.value ? "syncPwd" : "syncEmail").focus(), 50);
 };
