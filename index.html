@@ -58,6 +58,10 @@
   #dlgConf .hint{margin:0; line-height:1.45}
   .icon{border:0; background:none; padding:6px 8px; font-size:16px; color:var(--muted); border-radius:8px}
   .icon:hover{background:var(--bg); color:var(--text)}
+  /* i due tasti dell'intestazione: su fondo scuro quelli smorti non si vedevano */
+  .top .icon{flex:none; color:var(--text); background:var(--bg); font-size:19px;
+    border:1px solid var(--line); padding:7px 10px}
+  .top .icon:hover{border-color:var(--accent)}
   #btnSync[data-stato="ok"]{color:var(--ok)}
   #btnSync[data-stato="errore"]{color:var(--danger)}
   #btnSync[data-stato="corso"]{animation:pulsa 1.1s ease-in-out infinite}
@@ -111,6 +115,10 @@
   dialog::backdrop{background:rgba(0,0,0,.45)}
   .dlg-body{padding:18px}
   .dlg-body h3{margin:0 0 14px; font-size:18px}
+  .dlg-body hr{border:0; border-top:1px solid var(--line); margin:16px 0}
+  .dlg-body .between + .hint{margin:4px 0 10px}
+  /* il pannello scorre dentro di sé: titolo e tasto Chiudi restano fermi */
+  #dlgMenu .dlg-body{max-height:min(68vh, 620px); overflow:auto}
   .field{margin-bottom:12px}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
   .dlg-actions{display:flex; justify-content:space-between; gap:8px; padding:12px 18px;
@@ -255,37 +263,36 @@
 <!-- Dialog MENU / BACKUP -->
 <dialog id="dlgMenu">
   <div class="dlg-body">
-    <h3>Backup e dati</h3>
+    <h3>Impostazioni</h3>
+
     <div class="field" id="wrapInstall" hidden>
       <button class="primary" id="btnInstall" style="width:100%">&#128241; Installa l'app sul dispositivo</button>
-      <p class="hint" style="margin:6px 0 0">Aggiunge l'icona e la fa partire a schermo intero, anche senza rete.</p>
     </div>
-    <p class="hint" id="doveStanno"></p>
-    <div class="field" style="margin-top:16px">
-      <button class="primary" id="btnExport" style="width:100%">&#11015; Esporta backup (.json)</button>
-    </div>
-    <div class="field">
-      <button id="btnImport" style="width:100%">&#11014; Importa backup (.json)</button>
-      <input type="file" id="fileImport" accept="application/json,.json" hidden>
-    </div>
-    <div class="field">
-      <button id="btnCsv" style="width:100%">&#128203; Esporta elenco in CSV (per Excel)</button>
-    </div>
-    <hr style="border:0;border-top:1px solid var(--line); margin:18px 0">
-    <div class="between" style="margin-bottom:4px">
-      <b>Sincronizzazione</b>
-      <span class="hint" id="syncStato"></span>
-    </div>
-    <p class="hint" id="syncSpiega" style="margin:0"></p>
-    <div class="row" style="margin-top:10px; flex-wrap:wrap">
+
+    <div class="between"><b>Sincronizzazione</b><span class="hint" id="syncStato"></span></div>
+    <p class="hint" id="syncSpiega"></p>
+    <div class="row" style="flex-wrap:wrap">
       <button id="btnCollega" hidden>Collega questo dispositivo</button>
       <button id="btnSyncOra" hidden>Sincronizza adesso</button>
       <button class="danger ghost" id="btnScollega" hidden>Scollega</button>
     </div>
-    <hr style="border:0;border-top:1px solid var(--line); margin:18px 0">
+
+    <hr>
+
+    <div class="between"><b>Backup</b></div>
+    <p class="hint" id="doveStanno"></p>
+    <div class="grid2">
+      <button class="primary" id="btnExport">&#11015; Esporta backup</button>
+      <button id="btnImport">&#11014; Importa backup</button>
+    </div>
+    <button id="btnCsv" style="width:100%; margin-top:8px">&#128203; Esporta in CSV (per Excel)</button>
+    <input type="file" id="fileImport" accept="application/json,.json" hidden>
+
+    <hr>
+
     <p class="hint" id="stats"></p>
     <p class="hint" id="swStato"></p>
-    <button class="danger ghost" id="btnWipe" style="width:100%; margin-top:8px">Cancella tutti i dati</button>
+    <button class="danger ghost" id="btnWipe" style="width:100%; margin-top:10px">Cancella tutti i dati</button>
   </div>
   <div class="dlg-actions" style="justify-content:flex-end">
     <button class="ghost" data-close="dlgMenu">Chiudi</button>
@@ -1120,22 +1127,19 @@ function aggiornaPannelloSync(){
   const spiega = document.getElementById("syncSpiega");
   if(!stato) return;
   document.getElementById("doveStanno").textContent = syncAttivo()
-    ? "I dati stanno su questo dispositivo e in rete, allineati fra loro. Il backup su file "
-      + "conviene farlo lo stesso ogni tanto: è l'unica copia che rimane tua e basta."
-    : "I dati stanno solo su questo dispositivo, dentro il browser. Esporta ogni tanto un file "
-      + "di backup: se cambi browser o pulisci la cronologia, senza backup i dati si perdono.";
+    ? "Conviene lo stesso ogni tanto: è l'unica copia che resta solo tua."
+    : "I dati stanno solo qui, nel browser: pulendo la cronologia, senza backup si perdono.";
   if(!syncConfigurato()){
     stato.textContent = "non impostata";
-    spiega.textContent = "Per tenere allineati PC e telefono va compilata la configurazione "
-      + "Firebase dentro index.html: le istruzioni sono in SINCRONIZZAZIONE.txt.";
+    spiega.textContent = "Va compilata la configurazione Firebase in index.html: "
+      + "istruzioni in SINCRONIZZAZIONE.txt.";
   }else if(!syncAttivo()){
     stato.textContent = "non collegato";
-    spiega.textContent = "I dati stanno solo su questo dispositivo. Collegalo per condividere "
-      + "l'archivio con gli altri tuoi dispositivi.";
+    spiega.textContent = "Collega il dispositivo per tenere lo stesso archivio su PC e telefono.";
   }else{
     stato.textContent = NOMI_STATO[statoSync.stato] + (statoSync.dettaglio ? " (" + statoSync.dettaglio + ")" : "");
-    spiega.textContent = sessione.email + " · ultima sincronizzazione " + quando(sessione.ultimo)
-      + ". I nominativi sono anche sui server Google, non solo qui.";
+    spiega.textContent = sessione.email + " · ultima: " + quando(sessione.ultimo)
+      + ". I nominativi sono anche sui server Google.";
   }
   document.getElementById("btnCollega").hidden = !syncConfigurato() || syncAttivo();
   document.getElementById("btnSyncOra").hidden = !syncAttivo();
