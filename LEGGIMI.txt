@@ -39,15 +39,20 @@ https, che con il server locale non c'e'. Serve una pubblicazione online
 (dei file dell'app, NON dei dati).
 
 COME SI USA
-1. Crea una via ("+ Nuova via").
-2. Entra nella via e usa "Inserimento rapido" in fondo: nome, civico,
+1. Crea una zona col tasto in basso (i giri: 1a, 1b, 2a...) ed entraci.
+2. Dentro la zona crea una via ("+ Nuova via").
+3. Entra nella via e usa "Inserimento rapido" in fondo: nome, civico,
    interno, Invio. Il civico resta compilato, cosi' carichi tutta la
    palazzina di seguito.
-3. Piu' nomi allo stesso indirizzo: in "+ Nominativo" ogni nome ha la sua
+4. Piu' nomi allo stesso indirizzo: in "+ Nominativo" ogni nome ha la sua
    cella e appena scrivi ne compare un'altra. Ognuno diventa un
    nominativo suo. Invio salta alla cella dopo.
-4. Le note (citofono, cassetta) stanno nella stessa scheda.
-5. La barra in alto cerca ovunque: nomi, vie, civici, note. Tasto "/".
+5. Le note (citofono, cassetta) stanno nella stessa scheda.
+6. La zona e' del civico, non della via: se una strada e' divisa fra due
+   giri, tocca la targhetta della zona accanto al civico e lo sposti
+   tutto insieme. Da "Tutte le vie" vedi l'archivio senza filtri.
+7. La barra in alto cerca ovunque, anche fuori dalla zona che stai
+   guardando: nomi, vie, civici, note. Tasto "/".
 
 DOVE SONO I DATI
 Solo sul dispositivo, dentro il browser. Niente internet, nessun account.

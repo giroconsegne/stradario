@@ -8,9 +8,11 @@ si apre una via e vengono fuori i nominativi raggruppati per civico.
 
 ## Come funziona
 
+- **Zone** (i giri: 1a, 1b, 2a…) come prima schermata: si sceglie il giro e si vede solo quello.
 - **Vie** in ordine alfabetico, con il numero di nominativi.
 - **Dentro la via**: residenti raggruppati per civico e ordinati in modo naturale
-  (2 → 12 → 12/A), poi per interno.
+  (2 → 12 → 12/A), poi per interno. La zona sta sul civico, non sulla via: la
+  stessa strada può essere spezzata fra due giri, e il civico si sposta tutto insieme.
 - **Inserimento rapido**: nome, civico, interno, Invio — il civico resta compilato,
   così si carica un intero palazzo di seguito.
 - **Più nomi in un colpo**: una cella per nome, ne compare una nuova mano a mano;

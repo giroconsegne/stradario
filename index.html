@@ -79,6 +79,9 @@
   .street .sub{font-size:13px; color:var(--muted); font-weight:400}
   .badge{background:var(--bg); border:1px solid var(--line); color:var(--muted);
     border-radius:20px; padding:2px 10px; font-size:13px; white-space:nowrap}
+  button.badge.zona{background:var(--accent-soft); border-color:transparent; color:var(--accent);
+    font-weight:600; cursor:pointer; padding:1px 9px; font-size:12px}
+  button.badge.zona:hover{border-color:var(--accent)}
   .civico-group{border-bottom:1px solid var(--line)}
   .civico-group:last-child{border-bottom:0}
   .civico-head{display:flex; align-items:baseline; gap:8px; padding:9px 14px;
@@ -92,7 +95,12 @@
   .empty{text-align:center; color:var(--muted); padding:44px 16px}
   .empty p{margin:6px 0 16px}
   .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px}
-  .crumb{display:flex; align-items:center; gap:6px; color:var(--muted); font-size:14px; margin-bottom:8px}
+  .crumb{display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:12px}
+  /* le tappe del percorso: targhette, non link sottolineati */
+  .crumb button.link{border:1px solid var(--line); background:var(--card); color:var(--muted);
+    text-decoration:none; border-radius:20px; padding:5px 13px; font-size:13px; font-weight:500}
+  .crumb button.link:hover{color:var(--text); border-color:var(--accent); background:var(--accent-soft)}
+  .crumb span{color:var(--muted); font-size:13px}
   .title{font-size:22px; font-weight:700; margin:0 0 4px}
   form.quick{display:grid; grid-template-columns:1fr 90px 90px auto; gap:8px; padding:12px 14px;
     background:var(--bg); border-top:1px solid var(--line)}
@@ -172,6 +180,43 @@
 <button class="fab primary" id="fab">+ Aggiungi</button>
 <div class="toast" id="toast"></div>
 
+<!-- Dialog ZONA -->
+<dialog id="dlgZona">
+  <form method="dialog">
+    <div class="dlg-body">
+      <h3 id="zonaTitle">Nuova zona</h3>
+      <div class="field">
+        <label for="zonaNome">Nome della zona *</label>
+        <input type="text" id="zonaNome" placeholder="Es. 1a" required>
+        <p class="hint" style="margin:4px 0 0">Come chiami il giro: 1a, 1b, 2a…</p>
+      </div>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="danger" id="zonaDelete">Elimina</button>
+      <div class="row">
+        <button type="button" class="ghost" data-close="dlgZona">Annulla</button>
+        <button type="button" class="primary" id="zonaSave">Salva</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Dialog ZONA DI UN CIVICO -->
+<dialog id="dlgZonaCiv">
+  <div class="dlg-body">
+    <h3 id="zcTitle">Zona del civico</h3>
+    <p class="hint" style="margin:0 0 12px" id="zcQuanti"></p>
+    <div class="field">
+      <label for="zcSelect">Zona</label>
+      <select id="zcSelect"></select>
+    </div>
+  </div>
+  <div class="dlg-actions" style="justify-content:flex-end">
+    <button type="button" class="ghost" data-close="dlgZonaCiv">Annulla</button>
+    <button type="button" class="primary" id="zcSave">Sposta</button>
+  </div>
+</dialog>
+
 <!-- Dialog VIA -->
 <dialog id="dlgVia">
   <form method="dialog">
@@ -211,10 +256,17 @@
   <form method="dialog">
     <div class="dlg-body">
       <h3 id="abTitle">Nuovo residente</h3>
-      <div class="field">
-        <label for="abVia">Via *</label>
-        <select id="abVia"></select>
+      <div class="grid2">
+        <div class="field">
+          <label for="abVia">Via *</label>
+          <select id="abVia"></select>
+        </div>
+        <div class="field">
+          <label for="abZona">Zona</label>
+          <select id="abZona"></select>
+        </div>
       </div>
+      <p class="hint" style="margin:-6px 0 12px">La zona vale per tutto il civico, non per la singola persona.</p>
       <div class="field">
         <label>Cognome e nome *</label>
         <div id="abNomi" class="nomi"></div>
@@ -326,8 +378,8 @@
 /* ---------------- Archivio dati (localStorage) ---------------- */
 const KEY = "stradario.casellario.v1";
 let db = load();
-let view = { page: "vie", viaId: null };
-let editing = { viaId: null, abId: null };
+let view = { page: "zone", zonaId: undefined, viaId: null };
+let editing = { zonaId: null, viaId: null, abId: null };
 
 function load(){
   try{
@@ -359,9 +411,10 @@ const SCADENZA_TOMBE = 180*24*60*60*1000;   // dopo sei mesi la traccia si butta
 function normalizza(d){
   d.version = 1;
   const ora = Date.now();
+  d.zone = Array.isArray(d.zone) ? d.zone : [];
   d.cancellati = (Array.isArray(d.cancellati) ? d.cancellati : [])
     .filter(t => t && t.id && t.agg > ora - SCADENZA_TOMBE);
-  for(const r of [...d.vie, ...d.abitanti]) if(!r.agg) r.agg = ora;
+  for(const r of [...d.zone, ...d.vie, ...d.abitanti]) if(!r.agg) r.agg = ora;
   return d;
 }
 const tocca = r => { if(r) r.agg = Date.now(); return r; };
@@ -393,8 +446,40 @@ function cmpInterno(a,b){
   return norm(a).localeCompare(norm(b));
 }
 const via = id => db.vie.find(v => v.id === id);
-const abitantiDiVia = id => db.abitanti.filter(a => a.viaId === id);
+const zona = id => db.zone.find(z => z.id === id);
 
+/* La zona sta sul civico, non sulla via: la stessa strada può essere spezzata
+   fra due giri. In pratica ogni nominativo porta la zona del suo civico, e
+   tutti quelli dello stesso civico la cambiano insieme.
+   zonaId vale "" per i civici non ancora assegnati a nessuna zona. */
+const SENZA_ZONA = "";
+
+function abitantiDiVia(viaId, zonaId){
+  return db.abitanti.filter(a => a.viaId === viaId
+    && (zonaId === undefined || (a.zonaId || SENZA_ZONA) === zonaId));
+}
+const abitantiDiZona = zonaId =>
+  zonaId === undefined ? db.abitanti : db.abitanti.filter(a => (a.zonaId || SENZA_ZONA) === zonaId);
+
+function vieDiZona(zonaId){
+  if(zonaId === undefined) return vieOrdinate();
+  const dentro = new Set(abitantiDiZona(zonaId).map(a => a.viaId));
+  const abitate = new Set(db.abitanti.map(a => a.viaId));
+  // una via ancora senza nominativi compare in tutte le zone: se no, appena
+  // creata sparirebbe dall'elenco e sembrerebbe persa
+  return vieOrdinate().filter(v => dentro.has(v.id) || !abitate.has(v.id));
+}
+/* La zona di un civico è quella dei nominativi che ci stanno dentro. */
+function zonaDelCivico(viaId, civico){
+  const a = db.abitanti.find(x => x.viaId === viaId && (x.civico || "") === civico);
+  return a ? (a.zonaId || SENZA_ZONA) : SENZA_ZONA;
+}
+const nomeZona = id => { const z = zona(id); return z ? z.nome : (id ? "(zona eliminata)" : "senza zona"); };
+
+function zoneOrdinate(){
+  // stesso ordinamento naturale dei civici: 1a < 1b < 2a < 10a
+  return [...db.zone].sort((a,b)=> cmpCivico(a.nome, b.nome));
+}
 function vieOrdinate(){
   return [...db.vie].sort((a,b)=> norm(a.nome).localeCompare(norm(b.nome)));
 }
@@ -468,32 +553,77 @@ const qbox = document.getElementById("q");
 function render(){
   const q = qbox.value.trim();
   if(q) return renderRicerca(q);
+  // una zona eliminata mentre la si guardava riporta all'elenco delle zone
+  if(view.zonaId && !zona(view.zonaId)) view = {page:"zone", zonaId:undefined, viaId:null};
   if(view.page === "via" && via(view.viaId)) return renderVia(via(view.viaId));
-  view.page = "vie";
-  renderVie();
+  if(view.page === "vie") return renderVie();
+  view.page = "zone";
+  renderZone();
+}
+
+/* Prima schermata: si sceglie il giro su cui si sta lavorando. */
+function renderZone(){
+  document.getElementById("fab").textContent = "+ Nuova zona";
+  const zone = zoneOrdinate();
+  const senza = abitantiDiZona(SENZA_ZONA).length;
+
+  if(!zone.length && !db.vie.length){
+    app.innerHTML = `
+      <div class="empty">
+        <h2 style="color:var(--text);text-transform:none;font-size:20px">Archivio vuoto</h2>
+        <p>Comincia creando la prima zona (1a, 1b, 2a…), poi dentro ci metti le vie.</p>
+        <button class="primary" onclick="apriZona()">Crea la prima zona</button>
+      </div>`;
+    return;
+  }
+
+  const riga = (etichetta, sub, n, azione, extra) => `
+    <div class="street" onclick="${azione}">
+      <div class="name">${etichetta}${sub ? `<div class="sub">${sub}</div>`:""}</div>
+      ${extra || ""}
+      <span class="badge">${n}</span>
+      <span style="color:var(--muted)">&rsaquo;</span>
+    </div>`;
+
+  app.innerHTML = `
+    <h2 style="margin-top:4px">Seleziona zona</h2>
+    ${zone.length ? `<div class="card">
+      ${zone.map(z=>{
+        const nv = vieDiZona(z.id).length, na = abitantiDiZona(z.id).length;
+        return riga(esc(z.nome), `${conta(nv,"via","vie")}`, na, `vaiZona('${z.id}')`,
+          `<button class="icon" title="Modifica zona" onclick="event.stopPropagation();apriZona('${z.id}')">&#9998;</button>`);
+      }).join("")}
+    </div>` : `<div class="empty"><p>Nessuna zona. Creane una col tasto in basso.</p></div>`}
+
+    <h2>Tutto insieme</h2>
+    <div class="card">
+      ${riga("Tutte le vie", "senza distinzione di zona", db.abitanti.length, "vaiTutteLeVie()")}
+      ${senza ? riga("Civici senza zona", "da assegnare a un giro", senza, `vaiZona('')`) : ""}
+    </div>`;
 }
 
 function renderVie(){
   document.getElementById("fab").textContent = "+ Nuova via";
-  const vie = vieOrdinate();
-  if(!vie.length){
-    app.innerHTML = `
-      <div class="empty">
-        <h2 style="color:var(--text);text-transform:none;font-size:20px">Archivio vuoto</h2>
-        <p>Comincia inserendo la prima via, poi aggiungi le persone con civico e interno.</p>
-        <button class="primary" onclick="apriVia()">Aggiungi la prima via</button>
-      </div>`;
-    return;
-  }
-  const tot = db.abitanti.length;
+  const z = view.zonaId;
+  const vie = vieDiZona(z);
+  const titolo = z === undefined ? "Tutte le vie"
+               : z === SENZA_ZONA ? "Civici senza zona"
+               : "Zona " + esc(nomeZona(z));
+  const tot = abitantiDiZona(z).length;
+
   app.innerHTML = `
+    <div class="crumb"><button class="link" onclick="vaiZone()">Zone</button></div>
     <div class="between" style="margin-bottom:12px">
-      <div><span class="badge">${vie.length} vie</span> <span class="badge">${tot} nominativi</span></div>
+      <h1 class="title" style="margin:0">${titolo}</h1>
       <button onclick="apriAbitante()">+ Nominativo</button>
     </div>
-    <div class="card">
+    <div class="between" style="margin-bottom:12px">
+      <div><span class="badge">${conta(vie.length,"via","vie")}</span>
+           <span class="badge">${conta(tot,"nominativo","nominativi")}</span></div>
+    </div>
+    ${vie.length ? `<div class="card">
       ${vie.map(v=>{
-        const n = abitantiDiVia(v.id).length;
+        const n = abitantiDiVia(v.id, z).length;
         const sub = [v.cap, v.localita, v.note].filter(Boolean).join(" · ");
         return `<div class="street" onclick="vaiVia('${v.id}')">
           <div class="name">${esc(v.nome)}${sub ? `<div class="sub">${esc(sub)}</div>`:""}</div>
@@ -501,22 +631,34 @@ function renderVie(){
           <span style="color:var(--muted)">&rsaquo;</span>
         </div>`;
       }).join("")}
-    </div>`;
+    </div>` : `<div class="empty"><p>Nessuna via ${z === undefined ? "nell'archivio" : "in questa zona"}.</p>
+        <button class="primary" onclick="apriVia()">Aggiungi una via</button></div>`}`;
 }
 
 function renderVia(v){
   document.getElementById("fab").textContent = "+ Nominativo";
-  const lista = abitantiOrdinati(abitantiDiVia(v.id));
+  const z = view.zonaId;
+  const lista = abitantiOrdinati(abitantiDiVia(v.id, z));
+  const fuori = z === undefined ? [] : abitantiDiVia(v.id).filter(a => (a.zonaId||SENZA_ZONA) !== z);
+
   const gruppi = [];
   for(const a of lista){
     const key = a.civico || "—";
     let g = gruppi.find(g => g.key === key);
-    if(!g){ g = {key, items:[]}; gruppi.push(g); }
+    if(!g){ g = {key, items:[], zonaId: a.zonaId || SENZA_ZONA}; gruppi.push(g); }
     g.items.push(a);
   }
   const sub = [v.cap, v.localita, v.note].filter(Boolean).join(" · ");
+  const daDove = z === undefined ? "Tutte le vie"
+               : z === SENZA_ZONA ? "Civici senza zona"
+               : "Zona " + esc(nomeZona(z));
+
   app.innerHTML = `
-    <div class="crumb"><button class="link" onclick="vaiVie()">&lsaquo; Tutte le vie</button></div>
+    <div class="crumb">
+      <button class="link" onclick="vaiZone()">Zone</button>
+      <span>&rsaquo;</span>
+      <button class="link" onclick="tornaAlleVie()">${daDove}</button>
+    </div>
     <div class="between" style="margin-bottom:14px">
       <div>
         <h1 class="title">${esc(v.nome)}</h1>
@@ -528,7 +670,10 @@ function renderVia(v){
     ${gruppi.length ? `<div class="card">
       ${gruppi.map(g=>`
         <div class="civico-group">
-          <div class="civico-head">Civico ${esc(g.key)} <small>${g.items.length} ${g.items.length===1?"nominativo":"nominativi"}</small></div>
+          <div class="civico-head">Civico ${esc(g.key)}
+            <button class="badge zona" title="Cambia la zona di tutto il civico"
+              onclick="apriZonaCivico('${v.id}','${esc(g.key).replace(/'/g,"&#39;")}')">${esc(nomeZona(g.zonaId))}</button>
+            <small>${conta(g.items.length,"nominativo","nominativi")}</small></div>
           ${g.items.map(a=>`
             <div class="person">
               <div class="who">
@@ -539,7 +684,13 @@ function renderVia(v){
               <button class="icon" title="Modifica" onclick="apriAbitante('${a.id}')">&#9998;</button>
             </div>`).join("")}
         </div>`).join("")}
-    </div>` : `<div class="empty"><p>Nessun nominativo in questa via.</p></div>`}
+    </div>` : `<div class="empty"><p>Nessun nominativo di questa via ${z === undefined ? "" : "in questa zona"}.</p></div>`}
+
+    ${fuori.length ? `<p class="hint" style="margin:10px 2px 0">
+      ${fuori.length === 1
+        ? "Un altro nominativo di questa via sta in un'altra zona."
+        : `Altri ${fuori.length} nominativi di questa via stanno in altre zone.`}
+      <button class="link" onclick="vaiViaCompleta('${v.id}')">Mostra tutta la via</button></p>` : ""}
 
     <div class="card" style="margin-top:14px">
       <div class="civico-head">Inserimento rapido</div>
@@ -564,11 +715,11 @@ function renderRicerca(q){
 
   app.innerHTML = `
     <div class="between" style="margin-bottom:12px">
-      <div class="hint">${persone.length} nominativi · ${vie.length} vie per “${esc(q)}”</div>
+      <div class="hint">${conta(persone.length,"nominativo","nominativi")} · ${conta(vie.length,"via","vie")} per “${esc(q)}”</div>
       <button class="link" onclick="pulisciRicerca()">Annulla ricerca</button>
     </div>
     ${vie.length ? `<h2>Vie</h2><div class="card">
-      ${vie.map(v=>`<div class="street" onclick="vaiVia('${v.id}')">
+      ${vie.map(v=>`<div class="street" onclick="vaiViaCompleta('${v.id}')">
         <div class="name">${highlight(v.nome,q)}</div>
         <span class="badge">${abitantiDiVia(v.id).length}</span>
         <span style="color:var(--muted)">&rsaquo;</span></div>`).join("")}
@@ -577,7 +728,7 @@ function renderRicerca(q){
       ${persone.map(a=>`<div class="person">
         <div class="who">
           <b>${highlight(a.nome,q)}</b>
-          <div class="meta">${esc(indirizzo(a))}</div>
+          <div class="meta">${esc(indirizzo(a))}${a.zonaId ? " · zona " + esc(nomeZona(a.zonaId)) : ""}</div>
           ${a.note ? `<div class="note">${esc(a.note)}</div>`:""}
         </div>
         <button class="icon" title="Modifica" onclick="apriAbitante('${a.id}')">&#9998;</button>
@@ -590,9 +741,105 @@ function renderRicerca(q){
 }
 
 /* ---------------- Navigazione ---------------- */
-function vaiVia(id){ qbox.value=""; view = {page:"via", viaId:id}; window.scrollTo(0,0); render(); }
-function vaiVie(){ qbox.value=""; view = {page:"vie", viaId:null}; window.scrollTo(0,0); render(); }
+function vai(v){ qbox.value=""; view = v; window.scrollTo(0,0); render(); }
+function vaiZone(){ vai({page:"zone", zonaId:undefined, viaId:null}); }
+function vaiZona(id){ vai({page:"vie", zonaId:id, viaId:null}); }
+function vaiTutteLeVie(){ vai({page:"vie", zonaId:undefined, viaId:null}); }
+function tornaAlleVie(){ vai({page:"vie", zonaId:view.zonaId, viaId:null}); }
+function vaiVia(id){ vai({page:"via", zonaId:view.zonaId, viaId:id}); }
+function vaiViaCompleta(id){ vai({page:"via", zonaId:undefined, viaId:id}); }
 function pulisciRicerca(){ qbox.value=""; render(); }
+
+/* ---------------- Form: ZONA ---------------- */
+function opzioniZone(sel, valore){
+  sel.innerHTML = `<option value="">— senza zona —</option>`
+    + zoneOrdinate().map(z=>`<option value="${z.id}">${esc(z.nome)}</option>`).join("");
+  sel.value = valore || SENZA_ZONA;
+}
+
+function apriZona(id){
+  editing.zonaId = id || null;
+  const z = id ? zona(id) : null;
+  document.getElementById("zonaTitle").textContent = z ? "Modifica zona" : "Nuova zona";
+  document.getElementById("zonaNome").value = z ? z.nome : "";
+  document.getElementById("zonaDelete").style.visibility = z ? "visible" : "hidden";
+  document.getElementById("dlgZona").showModal();
+  setTimeout(()=> document.getElementById("zonaNome").focus(), 50);
+}
+document.getElementById("zonaSave").onclick = async ()=>{
+  const nome = document.getElementById("zonaNome").value.trim();
+  if(!nome){ toast("Il nome della zona è obbligatorio"); return; }
+  const doppione = db.zone.find(z => norm(z.nome) === norm(nome) && z.id !== editing.zonaId);
+  if(doppione && !await chiedi({
+      titolo: `La zona “${doppione.nome}” c'è già`,
+      testo: "Puoi crearla lo stesso, ma poi in elenco ne compaiono due uguali.",
+      conferma: "Crea comunque", pericolo: false
+    })) return;
+  if(editing.zonaId){
+    tocca(Object.assign(zona(editing.zonaId), {nome}));
+    toast("Zona aggiornata");
+  }else{
+    const nuova = tocca({id:uid(), nome});
+    db.zone.push(nuova);
+    view = {page:"vie", zonaId:nuova.id, viaId:null};   // si entra subito nella zona creata
+    toast("Zona creata");
+  }
+  save();
+  document.getElementById("dlgZona").close();
+  render();
+};
+document.getElementById("zonaDelete").onclick = async ()=>{
+  const z = zona(editing.zonaId); if(!z) return;
+  const dentro = abitantiDiZona(z.id);
+  const ok = await chiedi({
+    titolo: `Eliminare la zona “${z.nome}”?`,
+    testo: dentro.length
+      ? `Nessun nominativo viene cancellato: ${conta(dentro.length,"nominativo","nominativi")} e i loro civici tornano semplicemente senza zona.`
+      : "Non si può annullare."
+  });
+  if(!ok) return;
+  dentro.forEach(a => tocca(Object.assign(a, {zonaId: SENZA_ZONA})));
+  segnaCancellati([z.id]);
+  db.zone = db.zone.filter(x => x.id !== z.id);
+  save();
+  document.getElementById("dlgZona").close();
+  vaiZone();
+  toast("Zona eliminata");
+};
+
+/* Spostamento di un civico intero da una zona all'altra. */
+let civicoInCorso = null;
+function apriZonaCivico(viaId, civico){
+  if(civico === "—") civico = "";
+  const dentro = db.abitanti.filter(a => a.viaId === viaId && (a.civico||"") === civico);
+  if(!dentro.length) return;
+  civicoInCorso = {viaId, civico};
+  const v = via(viaId);
+  document.getElementById("zcTitle").textContent = "Civico " + (civico || "senza numero");
+  document.getElementById("zcQuanti").textContent =
+    `${conta(dentro.length,"nominativo","nominativi")} in ${v ? v.nome : "questa via"}: si spostano tutti insieme.`;
+  opzioniZone(document.getElementById("zcSelect"), zonaDelCivico(viaId, civico));
+  document.getElementById("dlgZonaCiv").showModal();
+}
+document.getElementById("zcSave").onclick = ()=>{
+  if(!civicoInCorso) return;
+  const nuova = document.getElementById("zcSelect").value;
+  db.abitanti
+    .filter(a => a.viaId === civicoInCorso.viaId && (a.civico||"") === civicoInCorso.civico)
+    .forEach(a => tocca(Object.assign(a, {zonaId: nuova})));
+  save();
+  document.getElementById("dlgZonaCiv").close();
+  render();
+  toast(nuova ? "Civico spostato in " + nomeZona(nuova) : "Civico tolto dalla zona");
+};
+
+/* Zona da dare a un nominativo nuovo: quella del civico se il civico esiste
+   già (i civici non si spezzano), altrimenti quella che si sta guardando. */
+function zonaPerNuovo(viaId, civico){
+  const esistente = db.abitanti.find(a => a.viaId === viaId && (a.civico||"") === civico);
+  if(esistente) return esistente.zonaId || SENZA_ZONA;
+  return view.zonaId === undefined ? SENZA_ZONA : view.zonaId;
+}
 
 /* ---------------- Form: VIA ---------------- */
 function apriVia(id){
@@ -630,7 +877,7 @@ document.getElementById("viaSave").onclick = async ()=>{
     })) return;
     const nuova = tocca({id:uid(), ...dati});
     db.vie.push(nuova);
-    view = {page:"via", viaId:nuova.id};
+    view = {page:"via", zonaId:view.zonaId, viaId:nuova.id};
     toast("Via creata");
   }
   save();
@@ -652,7 +899,7 @@ document.getElementById("viaDelete").onclick = async ()=>{
   db.vie = db.vie.filter(x => x.id !== v.id);
   save();
   document.getElementById("dlgVia").close();
-  vaiVie();
+  tornaAlleVie();
   toast("Via eliminata");
 };
 
@@ -717,10 +964,23 @@ function apriAbitante(id, viaIdPredefinita, nomePrecompilato){
   document.getElementById("abCivico").value  = a ? (a.civico||"") : "";
   document.getElementById("abInterno").value = a ? (a.interno||"") : "";
   document.getElementById("abNote").value    = a ? (a.note||"") : "";
+  opzioniZone(document.getElementById("abZona"),
+    a ? (a.zonaId||SENZA_ZONA) : (view.zonaId === undefined ? SENZA_ZONA : view.zonaId));
   document.getElementById("abDelete").style.visibility = a ? "visible" : "hidden";
   document.getElementById("dlgAb").showModal();
   setTimeout(()=> boxNomi().querySelector("input").focus(), 50);
 }
+/* Scrivendo un civico che esiste già, la zona si allinea da sola a quella
+   del civico: così non lo si spezza per distrazione. */
+function allineaZonaAlCivico(){
+  const civico = document.getElementById("abCivico").value.trim();
+  const viaId = document.getElementById("abVia").value;
+  const esistente = db.abitanti.find(x =>
+    x.viaId === viaId && (x.civico||"") === civico && x.id !== editing.abId);
+  if(civico && esistente) document.getElementById("abZona").value = esistente.zonaId || SENZA_ZONA;
+}
+document.getElementById("abCivico").oninput = allineaZonaAlCivico;
+document.getElementById("abVia").onchange = allineaZonaAlCivico;
 document.getElementById("abSave").onclick = ()=>{
   const nomi = nomiDelForm();
   const civico = document.getElementById("abCivico").value.trim();
@@ -729,6 +989,7 @@ document.getElementById("abSave").onclick = ()=>{
   const dati = {
     viaId: document.getElementById("abVia").value,
     civico,
+    zonaId:  document.getElementById("abZona").value,
     interno: document.getElementById("abInterno").value.trim(),
     note:    document.getElementById("abNote").value.trim()
   };
@@ -741,7 +1002,13 @@ document.getElementById("abSave").onclick = ()=>{
     nomi.forEach(nome => db.abitanti.push(tocca({id:uid(), ...dati, nome})));
     toast(nomi.length>1 ? nomi.length + " nominativi aggiunti" : "Nominativo aggiunto");
   }
-  view = {page:"via", viaId:dati.viaId};
+  // la zona è del civico: si porta dietro chi ci abita già
+  db.abitanti
+    .filter(x => x.viaId === dati.viaId && (x.civico||"") === civico && (x.zonaId||SENZA_ZONA) !== dati.zonaId)
+    .forEach(x => tocca(Object.assign(x, {zonaId: dati.zonaId})));
+
+  // se il civico è finito in un'altra zona, si va a vederlo là
+  view = {page:"via", zonaId: view.zonaId === undefined ? undefined : dati.zonaId, viaId:dati.viaId};
   qbox.value = "";
   save();
   document.getElementById("dlgAb").close();
@@ -778,7 +1045,8 @@ function quickAdd(ev, viaId){
   const interno = document.getElementById("qInt").value.trim();
   if(!nomi.length || !civico) return false;
   const nome = nomi[0];
-  db.abitanti.push(tocca({id:uid(), viaId, nome, civico, interno, note:""}));
+  db.abitanti.push(tocca({id:uid(), viaId, nome, civico, interno, note:"",
+                          zonaId: zonaPerNuovo(viaId, civico)}));
   save();
   render();
   // ripristina il civico e rimetti il fuoco sul nome: inserimento a raffica
@@ -807,10 +1075,11 @@ document.getElementById("btnExport").onclick = ()=>{
 };
 document.getElementById("btnCsv").onclick = ()=>{
   const q = s => `"${(s||"").toString().replace(/"/g,'""')}"`;
-  const righe = [["Via","CAP","Località","Civico","Interno","Cognome e nome","Note"].map(q).join(";")];
+  const righe = [["Zona","Via","CAP","Località","Civico","Interno","Cognome e nome","Note"].map(q).join(";")];
   for(const v of vieOrdinate()){
     for(const a of abitantiOrdinati(abitantiDiVia(v.id))){
-      righe.push([v.nome, v.cap, v.localita, a.civico, a.interno, a.nome, a.note].map(q).join(";"));
+      righe.push([a.zonaId ? nomeZona(a.zonaId) : "", v.nome, v.cap, v.localita,
+                  a.civico, a.interno, a.nome, a.note].map(q).join(";"));
     }
   }
   scarica(`stradario_${stamp()}.csv`, "﻿" + righe.join("\r\n"), "text/csv");
@@ -833,24 +1102,31 @@ document.getElementById("fileImport").onchange = ev=>{
     if(scelta){
       // quello che c'era prima va segnato come cancellato, se no torna
       // indietro dall'altro dispositivo alla prima sincronizzazione
-      const vecchi = [...db.vie, ...db.abitanti].map(r => r.id);
-      db = normalizza({version:1, vie:d.vie, abitanti:d.abitanti, cancellati:db.cancellati});
-      const rimasti = new Set([...db.vie, ...db.abitanti].map(r => r.id));
+      const vecchi = [...db.zone, ...db.vie, ...db.abitanti].map(r => r.id);
+      db = normalizza({version:1, zone:d.zone||[], vie:d.vie, abitanti:d.abitanti, cancellati:db.cancellati});
+      const rimasti = new Set([...db.zone, ...db.vie, ...db.abitanti].map(r => r.id));
       segnaCancellati(vecchi.filter(id => !rimasti.has(id)));
     }else{
       const mappa = {};
+      // le zone dell'altro archivio: quelle con lo stesso nome si fondono
+      for(const z of (d.zone || [])){
+        const esistente = db.zone.find(x => norm(x.nome) === norm(z.nome));
+        if(esistente){ mappa[z.id] = esistente.id; }
+        else{ const nid = uid(); mappa[z.id] = nid; db.zone.push(tocca({...z, id:nid})); }
+      }
       for(const v of d.vie){
         const esistente = db.vie.find(x => norm(x.nome) === norm(v.nome));
         if(esistente){ mappa[v.id] = esistente.id; }
         else{ const nid = uid(); mappa[v.id] = nid; db.vie.push(tocca({...v, id:nid})); }
       }
       for(const a of d.abitanti){
-        db.abitanti.push(tocca({...a, id:uid(), viaId: mappa[a.viaId] || a.viaId}));
+        db.abitanti.push(tocca({...a, id:uid(), viaId: mappa[a.viaId] || a.viaId,
+                                 zonaId: a.zonaId ? (mappa[a.zonaId] || a.zonaId) : SENZA_ZONA}));
       }
     }
     save();
     document.getElementById("dlgMenu").close();
-    vaiVie();
+    vaiZone();
     toast("Backup importato");
   };
   fr.readAsText(file);
@@ -859,21 +1135,21 @@ document.getElementById("fileImport").onchange = ev=>{
 document.getElementById("btnWipe").onclick = async ()=>{
   const ok = await chiedi({
     titolo: "Cancellare tutto l'archivio?",
-    testo: `Spariscono ${conta(db.vie.length,"via","vie")} e ${conta(db.abitanti.length,"nominativo","nominativi")}, e non si torna indietro. Se non hai un backup, annulla ed esportalo prima.`,
+    testo: `Spariscono ${conta(db.zone.length,"zona","zone")}, ${conta(db.vie.length,"via","vie")} e ${conta(db.abitanti.length,"nominativo","nominativi")}, e non si torna indietro. Se non hai un backup, annulla ed esportalo prima.`,
     conferma: "Cancella tutto"
   });
   if(!ok) return;
   if(!await chiedi({titolo:"Sicuro?", testo:"Ultima chiamata.", conferma:"Sì, cancella"})) return;
-  segnaCancellati([...db.vie, ...db.abitanti].map(r => r.id));
-  db = {version:1, vie:[], abitanti:[], cancellati:db.cancellati};
+  segnaCancellati([...db.zone, ...db.vie, ...db.abitanti].map(r => r.id));
+  db = {version:1, zone:[], vie:[], abitanti:[], cancellati:db.cancellati};
   save();
   document.getElementById("dlgMenu").close();
-  vaiVie();
+  vaiZone();
   toast("Archivio svuotato");
 };
 document.getElementById("btnMenu").onclick = ()=>{
   document.getElementById("stats").textContent =
-    `Archivio: ${db.vie.length} vie, ${db.abitanti.length} nominativi.`;
+    `Archivio: ${conta(db.zone.length,"zona","zone")}, ${conta(db.vie.length,"via","vie")}, ${conta(db.abitanti.length,"nominativo","nominativi")}.`;
   aggiornaStatoOffline();
   aggiornaPannelloSync();
   document.getElementById("dlgMenu").showModal();
@@ -1061,6 +1337,7 @@ function unisci(a, b){
   const limite = Date.now() - SCADENZA_TOMBE;
   return {
     version: 1,
+    zone: fondi(a.zone, b.zone),
     vie: fondi(a.vie, b.vie),
     abitanti: fondi(a.abitanti, b.abitanti),
     cancellati: [...tombe].map(([id, agg]) => ({id, agg})).filter(t => t.agg > limite)
@@ -1079,7 +1356,7 @@ async function sincronizza({silenzioso = true} = {}){
   try{
     for(let tentativo = 0; tentativo < 3; tentativo++){
       const remoto = await leggiRemoto();
-      const unito = unisci(db, remoto.archivio || {vie:[], abitanti:[], cancellati:[]});
+      const unito = unisci(db, remoto.archivio || {zone:[], vie:[], abitanti:[], cancellati:[]});
       let updateTime;
       try{
         updateTime = await scriviRemoto(unito, remoto.updateTime);
@@ -1254,8 +1531,10 @@ document.querySelectorAll("[data-close]").forEach(b=>{
   b.onclick = ()=> document.getElementById(b.dataset.close).close();
 });
 document.getElementById("fab").onclick = ()=>{
-  if(view.page === "via" && !qbox.value) apriAbitante(null, view.viaId);
-  else apriVia();
+  if(qbox.value) return apriVia();
+  if(view.page === "via") return apriAbitante(null, view.viaId);
+  if(view.page === "vie") return apriVia();
+  apriZona();
 };
 let tmr;
 qbox.oninput = ()=>{ clearTimeout(tmr); tmr = setTimeout(render, 120); };
