@@ -241,8 +241,9 @@
 <dialog id="dlgSync">
   <div class="dlg-body">
     <h3>Collega questo dispositivo</h3>
-    <p class="hint" style="margin:0 0 14px">Accedi per sincronizzare i dati.</p>
-    <div class="field">
+    <p class="hint" style="margin:0 0 14px"><span id="syncComeChi"></span>
+      <button type="button" class="link" id="btnCambiaEmail" hidden>Cambia indirizzo</button></p>
+    <div class="field" id="campoEmail">
       <label for="syncEmail">Email</label>
       <input type="email" id="syncEmail" autocomplete="username" placeholder="tu@esempio.it">
     </div>
@@ -1151,11 +1152,25 @@ function aggiornaPannelloSync(){
 document.getElementById("btnCollega").onclick = ()=>{
   document.getElementById("syncErrore").hidden = true;
   document.getElementById("syncPwd").value = "";
-  // l'ultima email usata qui resta scritta: dopo la prima volta basta la password
+  // l'indirizzo lo sappiamo già: si chiede la sola password, e il campo email
+  // resta nascosto dietro «Cambia indirizzo» per quando servisse un altro utente
   const email = document.getElementById("syncEmail");
   email.value = localStorage.getItem(KEY_EMAIL) || EMAIL_PREDEFINITA;
+  campoEmailVisibile(!email.value);
   document.getElementById("dlgSync").showModal();
   setTimeout(()=> document.getElementById(email.value ? "syncPwd" : "syncEmail").focus(), 50);
+};
+function campoEmailVisibile(visibile){
+  document.getElementById("campoEmail").hidden = !visibile;
+  document.getElementById("btnCambiaEmail").hidden = visibile;
+  document.getElementById("syncComeChi").textContent = visibile
+    ? "Accedi per sincronizzare i dati."
+    : "Accedi come " + document.getElementById("syncEmail").value + ".";
+}
+document.getElementById("btnCambiaEmail").onclick = ()=>{
+  campoEmailVisibile(true);
+  const e = document.getElementById("syncEmail");
+  e.focus(); e.select();
 };
 document.getElementById("btnEntra").onclick = async ()=>{
   const email = document.getElementById("syncEmail").value.trim();
@@ -1174,6 +1189,8 @@ document.getElementById("btnEntra").onclick = async ()=>{
   }catch(e){
     err.textContent = "Non entra: " + messaggioErrore(e);
     err.hidden = false;
+    // se il problema sono le credenziali, tira fuori l'email: magari è quella sbagliata
+    if(/email o password/.test(err.textContent)) campoEmailVisibile(true);
   }finally{
     btn.disabled = false; btn.textContent = "Entra";
   }
