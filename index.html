@@ -102,7 +102,7 @@
     form.quick button{grid-column:1 / -1}
   }
   label{display:block; font-size:12px; color:var(--muted); margin-bottom:3px}
-  input[type=text], input[type=search], textarea, select{
+  input[type=text], input[type=search], input[type=email], input[type=password], textarea, select{
     width:100%; padding:9px 10px; border-radius:9px; border:1px solid var(--line);
     background:var(--card); color:var(--text); font:inherit; outline:none}
   input:focus, textarea:focus, select:focus{border-color:var(--accent)}
@@ -119,6 +119,26 @@
   .dlg-body .between + .hint{margin:4px 0 10px}
   /* il pannello scorre dentro di sé: titolo e tasto Chiudi restano fermi */
   #dlgMenu .dlg-body{max-height:min(68vh, 620px); overflow:auto}
+  /* finestra di accesso: foglio compatto, centrato, con il tasto grande in fondo */
+  #dlgSync{width:min(372px, 92vw); border-radius:18px}
+  #dlgSync .dlg-body{padding:26px 24px 20px; text-align:center}
+  #dlgSync .sync-icona{width:54px; height:54px; margin:0 auto 14px; border-radius:50%;
+    background:var(--accent-soft); color:var(--accent); font-size:27px;
+    display:flex; align-items:center; justify-content:center}
+  #dlgSync h3{margin:0 0 5px; font-size:19px}
+  #dlgSync .hint{margin:0}
+  #dlgSync .field{text-align:left; margin:16px 0 0}
+  #dlgSync input{padding:11px 12px}
+  #dlgSync .con-occhio{position:relative}
+  #dlgSync .con-occhio input{padding-right:44px}
+  #dlgSync .con-occhio .icon{position:absolute; right:5px; top:50%; transform:translateY(-50%);
+    font-size:15px; opacity:.75}
+  #dlgSync .con-occhio .icon:hover{opacity:1}
+  #dlgSync .errore{margin:14px 0 0; text-align:left; font-size:13px; color:var(--danger);
+    background:var(--bg); border:1px solid var(--line); border-left:3px solid var(--danger);
+    border-radius:8px; padding:9px 11px}
+  #dlgSync #btnEntra{width:100%; margin-top:18px; padding:11px; font-weight:600}
+  #dlgSync [data-close]{margin-top:10px}
   .field{margin-bottom:12px}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
   .dlg-actions{display:flex; justify-content:space-between; gap:8px; padding:12px 18px;
@@ -240,8 +260,9 @@
 <!-- Dialog COLLEGAMENTO SINCRONIZZAZIONE -->
 <dialog id="dlgSync">
   <div class="dlg-body">
+    <div class="sync-icona" aria-hidden="true">&#9729;</div>
     <h3>Collega questo dispositivo</h3>
-    <p class="hint" style="margin:0 0 14px"><span id="syncComeChi"></span>
+    <p class="hint"><span id="syncComeChi"></span>
       <button type="button" class="link" id="btnCambiaEmail" hidden>Cambia indirizzo</button></p>
     <div class="field" id="campoEmail">
       <label for="syncEmail">Email</label>
@@ -249,13 +270,14 @@
     </div>
     <div class="field">
       <label for="syncPwd">Password</label>
-      <input type="password" id="syncPwd" autocomplete="current-password">
+      <div class="con-occhio">
+        <input type="password" id="syncPwd" autocomplete="current-password">
+        <button type="button" class="icon" id="btnVediPwd" title="Mostra la password">&#128065;</button>
+      </div>
     </div>
-    <p class="hint" id="syncErrore" style="color:var(--danger); margin:0" hidden></p>
-  </div>
-  <div class="dlg-actions" style="justify-content:flex-end">
-    <button type="button" class="ghost" data-close="dlgSync">Annulla</button>
+    <p class="errore" id="syncErrore" hidden></p>
     <button type="button" class="primary" id="btnEntra">Entra</button>
+    <button type="button" class="link" data-close="dlgSync">Annulla</button>
   </div>
 </dialog>
 
@@ -1151,7 +1173,10 @@ function aggiornaPannelloSync(){
 /* ---- Collegamento del dispositivo ---- */
 document.getElementById("btnCollega").onclick = ()=>{
   document.getElementById("syncErrore").hidden = true;
-  document.getElementById("syncPwd").value = "";
+  const pwd = document.getElementById("syncPwd");
+  pwd.value = "";
+  pwd.type = "password";              // se era rimasta in chiaro, si richiude
+  document.getElementById("btnVediPwd").title = "Mostra la password";
   // l'indirizzo lo sappiamo già: si chiede la sola password, e il campo email
   // resta nascosto dietro «Cambia indirizzo» per quando servisse un altro utente
   const email = document.getElementById("syncEmail");
@@ -1167,6 +1192,13 @@ function campoEmailVisibile(visibile){
     ? "Accedi per sincronizzare i dati."
     : "Accedi come " + document.getElementById("syncEmail").value + ".";
 }
+document.getElementById("btnVediPwd").onclick = ()=>{
+  const p = document.getElementById("syncPwd"), b = document.getElementById("btnVediPwd");
+  const mostra = p.type === "password";
+  p.type = mostra ? "text" : "password";
+  b.title = mostra ? "Nascondi la password" : "Mostra la password";
+  p.focus();
+};
 document.getElementById("btnCambiaEmail").onclick = ()=>{
   campoEmailVisibile(true);
   const e = document.getElementById("syncEmail");
