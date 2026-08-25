@@ -472,6 +472,7 @@ function zonaDelCivico(viaId, civico){
   return a ? (a.zonaId || SENZA_ZONA) : SENZA_ZONA;
 }
 const nomeZona = id => { const z = zona(id); return z ? z.nome : (id ? "(zona eliminata)" : "senza zona"); };
+const nomeVia  = id => { const v = via(id);  return v ? v.nome : ""; };
 
 function zoneOrdinate(){
   // stesso ordinamento naturale dei civici: 1a < 1b < 2a < 10a
@@ -503,14 +504,47 @@ function indirizzo(a){
   if(a.interno) s += " int. " + a.interno;
   return s;
 }
+/* La ricerca va a parole: ognuna deve trovare posto da qualche parte fra nome,
+   via, civico, interno e note. Così "gramsci 12" arriva al civico 12 di via
+   Gramsci, che come frase intera non sta scritta da nessuna parte.
+   Il civico però si confronta per intero: cercando 12 non devono uscire il 120,
+   il 121 e il 128, che prima venivano fuori tutti insieme. */
+const parole = q => norm(q).split(" ").filter(Boolean);
+// 12/A, 12 A e 12A sono lo stesso civico: si confrontano senza segni in mezzo
+const senzaSegni = s => [...norm(s)].filter(c => !" /.-".includes(c)).join("");
+const stessoCivico = (civico, p) => !!civico && senzaSegni(civico) === senzaSegni(p);
+
+/* "via", "int." e simili aiutano a scrivere un indirizzo ma nell'archivio non
+   ci sono: dentro una ricerca di più parole si lasciano passare. Da sole no, se
+   no cercando "piazza" verrebbe fuori tutto l'archivio invece delle piazze. */
+const RIEMPITIVI = new Set(["via","viale","piazza","piazzale","corso","largo",
+  "vicolo","strada","civico","numero","n","n.","int","int.","interno","scala"]);
+
+function trovaParola(a, p){
+  const v = via(a.viaId);
+  return norm(a.nome).includes(p)
+      || norm(a.note).includes(p)
+      || (v && norm(v.nome).includes(p))
+      || stessoCivico(a.civico, p)
+      || norm(a.interno) === p;
+}
+
 function highlight(text, q){
-  const t = esc(text);
-  if(!q) return t;
-  const i = norm(text).indexOf(norm(q));
-  if(i < 0) return t;
-  // rimappa gli indici sul testo originale (stessa lunghezza dopo NFD-strip)
-  const a = esc(text.slice(0,i)), b = esc(text.slice(i, i+q.length)), c = esc(text.slice(i+q.length));
-  return a + "<mark>" + b + "</mark>" + c;
+  const n = norm(text);
+  if(n.length !== text.length) return esc(text);   // gli indici non tornerebbero
+  const pezzi = [];
+  for(const p of parole(q)){
+    for(let i = n.indexOf(p); i >= 0; i = n.indexOf(p, i + p.length)) pezzi.push([i, i+p.length]);
+  }
+  if(!pezzi.length) return esc(text);
+  pezzi.sort((a,b)=> a[0]-b[0]);
+  let out = "", pos = 0;
+  for(const [da, a] of pezzi){
+    if(da < pos) continue;                          // pezzi accavallati: basta il primo
+    out += esc(text.slice(pos,da)) + "<mark>" + esc(text.slice(da,a)) + "</mark>";
+    pos = a;
+  }
+  return out + esc(text.slice(pos));
 }
 function toast(msg){
   const t = document.getElementById("toast");
@@ -701,14 +735,20 @@ function renderVia(v){
 }
 
 function renderRicerca(q){
-  const nq = norm(q);
-  const persone = db.abitanti.filter(a=>
-    norm(a.nome).includes(nq) ||
-    norm(a.note).includes(nq) ||
-    norm(indirizzo(a)).includes(nq)
-  ).sort((a,b)=> norm(a.nome).localeCompare(norm(b.nome)));
+  const ps = parole(q);
+  const serve = (a,p) => trovaParola(a,p) || (ps.length > 1 && RIEMPITIVI.has(p));
+  const persone = db.abitanti.filter(a => ps.every(p => serve(a,p)));
 
-  const vie = vieOrdinate().filter(v => norm(v.nome).includes(nq));
+  // cercando un indirizzo il civico conta più del cognome: i risultati si
+  // mettono in fila come dentro la via, se no saltano da una strada all'altra
+  const perIndirizzo = ps.some(p => p[0] >= "0" && p[0] <= "9");
+  persone.sort((a,b)=> perIndirizzo
+    ? (norm(nomeVia(a.viaId)).localeCompare(norm(nomeVia(b.viaId)))
+       || cmpCivico(a.civico,b.civico) || cmpInterno(a.interno,b.interno)
+       || norm(a.nome).localeCompare(norm(b.nome)))
+    : norm(a.nome).localeCompare(norm(b.nome)));
+
+  const vie = vieOrdinate().filter(v => ps.every(p => norm(v.nome).includes(p)));
 
   app.innerHTML = `
     <div class="between" style="margin-bottom:12px">
@@ -725,7 +765,7 @@ function renderRicerca(q){
       ${persone.map(a=>`<div class="person">
         <div class="who">
           <b>${highlight(a.nome,q)}</b>
-          <div class="meta">${esc(indirizzo(a))}${a.zonaId ? " · zona " + esc(nomeZona(a.zonaId)) : ""}</div>
+          <div class="meta">${highlight(indirizzo(a),q)}${a.zonaId ? " · zona " + esc(nomeZona(a.zonaId)) : ""}</div>
           ${a.note ? `<div class="note">${esc(a.note)}</div>`:""}
         </div>
         <button class="icon" title="Modifica" onclick="apriAbitante('${a.id}')">&#9998;</button>

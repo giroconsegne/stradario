@@ -18,7 +18,10 @@ si apre una via e vengono fuori i nominativi raggruppati per civico.
 - **Più nomi in un colpo**: una cella per nome, ne compare una nuova mano a mano;
   diventano nominativi separati allo stesso indirizzo.
 - **Scheda completa**: note (citofono, cassetta, ecc.).
-- **Ricerca** unica su nomi, vie, civici e note, accenti ignorati. Scorciatoia: `/`.
+- **Ricerca** unica su nomi, vie, civici, interni e note, accenti ignorati. Va a
+  parole, così si può scrivere l'indirizzo di seguito: `gramsci 12`, `fiume 3 int 1`.
+  Il civico si confronta per intero, quindi `12` non tira dentro il 120 e il 121.
+  Scorciatoia: `/`.
 - **Backup**: esportazione e importazione in JSON, esportazione in CSV per Excel.
 - **Sincronizzazione** facoltativa fra PC e telefono, da accendere a mano.
 

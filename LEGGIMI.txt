@@ -52,7 +52,10 @@ COME SI USA
    giri, tocca la targhetta della zona accanto al civico e lo sposti
    tutto insieme. Da "Tutte le vie" vedi l'archivio senza filtri.
 7. La barra in alto cerca ovunque, anche fuori dalla zona che stai
-   guardando: nomi, vie, civici, note. Tasto "/".
+   guardando: nomi, vie, civici, interni, note. Tasto "/".
+   Si cerca a parole, quindi si puo' scrivere l'indirizzo di seguito:
+   "gramsci 12" oppure "fiume 3 int 1". Il civico deve essere quello
+   giusto per intero: cercando 12 non escono il 120 e il 121.
 
 DOVE SONO I DATI
 Solo sul dispositivo, dentro il browser. Niente internet, nessun account.
