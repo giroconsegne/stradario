@@ -145,6 +145,15 @@
     border-radius:8px; padding:9px 11px}
   #dlgSync #btnEntra{width:100%; margin-top:18px; padding:11px; font-weight:600}
   #dlgSync [data-close]{margin-top:10px}
+  /* il grazie dell'apertura: stesso foglio compatto della finestra di accesso */
+  #dlgGrazie{width:min(360px, 92vw); border-radius:18px}
+  #dlgGrazie .dlg-body{padding:26px 24px 22px; text-align:center}
+  #dlgGrazie .icona{width:54px; height:54px; margin:0 auto 14px; border-radius:50%;
+    background:var(--accent-soft); color:var(--accent); font-size:27px;
+    display:flex; align-items:center; justify-content:center}
+  #dlgGrazie h3{margin:0 0 6px; font-size:19px}
+  #dlgGrazie .hint{margin:0; line-height:1.5}
+  #dlgGrazie button{width:100%; margin-top:20px; padding:11px; font-weight:600}
   .field{margin-bottom:12px}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
   .dlg-actions{display:flex; justify-content:space-between; gap:8px; padding:12px 18px;
@@ -366,6 +375,17 @@
   </div>
   <div class="dlg-actions" style="justify-content:flex-end">
     <button class="ghost" data-close="dlgMenu">Chiudi</button>
+  </div>
+</dialog>
+
+<!-- Dialog GRAZIE: il saluto che compare all'apertura -->
+<dialog id="dlgGrazie">
+  <div class="dlg-body">
+    <div class="icona" aria-hidden="true">&#128079;</div>
+    <h3>Grazie</h3>
+    <p class="hint">Ringraziamo Guglielmo per la pazienza e l'impegno
+      nella raccolta dei dati.</p>
+    <button type="button" class="primary" data-close="dlgGrazie">Chiudi</button>
   </div>
 </dialog>
 
@@ -1624,6 +1644,7 @@ if("serviceWorker" in navigator && location.protocol.startsWith("http")){
 render();
 mostraStato(syncAttivo() ? "ok" : (syncConfigurato() ? "scollegato" : "spento"));
 sincronizza();
+document.getElementById("dlgGrazie").showModal();
 </script>
 </body>
 </html>
