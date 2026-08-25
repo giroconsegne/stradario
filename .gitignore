@@ -3,6 +3,10 @@ stradario_backup_*.json
 stradario_*.csv
 *.backup
 
+# la rubrica di partenza: contiene i nominativi, come i backup
+*.xlsx
+*.xls
+
 # prima versione, sostituita da index.html
 stradario.html
 
@@ -15,8 +19,9 @@ node_modules/
 # avvio locale specifico di questo computer
 Pubblica su GitHub.cmd
 
-# appunti con le credenziali: non devono uscire da questo computer
+# appunti e schermate con le credenziali: non devono uscire da questo computer
 utente stradario.txt
+Dati.png
 credenziali*.txt
 
 # configurazione locale dell'editor

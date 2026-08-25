@@ -36,8 +36,6 @@
     border-bottom:1px solid var(--line); padding:10px 14px;
   }
   .top{display:flex; align-items:center; gap:10px; max-width:900px; margin:0 auto}
-  .logo{font-weight:700; font-size:17px; white-space:nowrap}
-  .logo small{display:block; font-weight:400; font-size:11px; color:var(--muted)}
   .search{flex:1; display:flex; align-items:center; gap:8px; background:var(--bg);
     border:1px solid var(--line); border-radius:10px; padding:0 10px}
   .search input{flex:1; border:0; background:transparent; color:var(--text);
@@ -165,7 +163,6 @@
 
 <header>
   <div class="top">
-    <div class="logo">Stradario<small id="sottotitolo">Casellario — dati locali</small></div>
     <div class="search">
       <span>&#128269;</span>
       <input id="q" type="search" placeholder="Cerca nome, via, civico…" autocomplete="off">
@@ -1419,8 +1416,6 @@ function mostraStato(stato, dettaglio){
   b.dataset.stato = stato;
   b.title = NOMI_STATO[stato] + (dettaglio ? " — " + dettaglio : "")
     + (syncAttivo() ? " · ultima: " + quando(sessione.ultimo) : "");
-  document.getElementById("sottotitolo").textContent =
-    syncAttivo() ? "Casellario — archivio in rete" : "Casellario — dati locali";
   aggiornaPannelloSync();
 }
 function aggiornaPannelloSync(){
