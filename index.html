@@ -165,6 +165,29 @@
     opacity:0; pointer-events:none; transition:opacity .2s; font-size:14px}
   .toast.show{opacity:1}
   .hint{font-size:13px; color:var(--muted)}
+  /* la mappa: le tessere sotto, le vie evidenziate sopra in un disegno */
+  .mappa{position:relative; height:min(68vh, 560px); border-radius:12px; overflow:hidden;
+    border:1px solid var(--line); background:var(--bg); touch-action:none; cursor:grab}
+  .mappa.trascino{cursor:grabbing}
+  .mappa img.tessera{position:absolute; width:256px; height:256px; -webkit-user-drag:none;
+    user-select:none; pointer-events:none}
+  .mappa svg{position:absolute; inset:0; width:100%; height:100%; pointer-events:none}
+  .mappa .zoom{position:absolute; right:10px; top:10px; display:flex; flex-direction:column; gap:6px}
+  .mappa .zoom button{width:36px; height:36px; padding:0; font-size:19px; line-height:1;
+    background:var(--card); box-shadow:var(--shadow)}
+  .mappa .credito{position:absolute; right:0; bottom:0; font-size:10px; padding:2px 6px;
+    background:rgba(0,0,0,.5); color:#fff; border-radius:6px 0 0 0}
+  .mappa .credito a{color:#fff}
+  .mappa .avviso{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:var(--card); color:var(--muted); font-size:14px; text-align:center; padding:24px}
+  .mappa.punta{cursor:crosshair}
+  .civ-chip{border-radius:999px; padding:5px 11px; font-size:13px; font-weight:600}
+  .civ-chip.messo{background:var(--accent-soft); border-color:transparent; color:var(--accent)}
+  .civ-chip.armato{background:var(--accent); border-color:var(--accent); color:#fff}
+  .civ-elenco{display:flex; flex-wrap:wrap; gap:7px; margin-top:9px}
+  .legenda{display:flex; flex-wrap:wrap; gap:12px; margin:10px 0 0; font-size:13px; color:var(--muted)}
+  .legenda span{display:inline-flex; align-items:center; gap:6px}
+  .legenda i{width:16px; height:4px; border-radius:2px; display:inline-block}
   mark{background:var(--accent-soft); color:inherit; border-radius:3px; padding:0 2px}
 </style>
 </head>
@@ -378,6 +401,22 @@
   </div>
 </dialog>
 
+<!-- Dialog CIVICO SULLA MAPPA: chi sta a quel numero -->
+<dialog id="dlgCivico">
+  <div class="dlg-body">
+    <h3 id="civTitolo"></h3>
+    <p class="hint" id="civQuanti"></p>
+    <div id="civElenco"></div>
+  </div>
+  <div class="dlg-actions">
+    <button type="button" class="danger ghost" id="civTogli">Togli dalla mappa</button>
+    <div class="row">
+      <button type="button" id="civSposta">Sposta</button>
+      <button type="button" class="ghost" data-close="dlgCivico">Chiudi</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- Dialog GRAZIE: il saluto che compare all'apertura -->
 <dialog id="dlgGrazie">
   <div class="dlg-body">
@@ -429,9 +468,10 @@ function normalizza(d){
   d.version = 1;
   const ora = Date.now();
   d.zone = Array.isArray(d.zone) ? d.zone : [];
+  d.civici = Array.isArray(d.civici) ? d.civici : [];   // i civici messi sulla mappa
   d.cancellati = (Array.isArray(d.cancellati) ? d.cancellati : [])
     .filter(t => t && t.id && t.agg > ora - SCADENZA_TOMBE);
-  for(const r of [...d.zone, ...d.vie, ...d.abitanti]) if(!r.agg) r.agg = ora;
+  for(const r of [...d.zone, ...d.vie, ...d.abitanti, ...d.civici]) if(!r.agg) r.agg = ora;
   return d;
 }
 const tocca = r => { if(r) r.agg = Date.now(); return r; };
@@ -493,6 +533,9 @@ function zonaDelCivico(viaId, civico){
 }
 const nomeZona = id => { const z = zona(id); return z ? z.nome : (id ? "(zona eliminata)" : "senza zona"); };
 const nomeVia  = id => { const v = via(id);  return v ? v.nome : ""; };
+// le zone in cui questa via ha qualcuno: una strada può stare a cavallo di due giri
+const zoneDellaVia = viaId =>
+  [...new Set(db.abitanti.filter(a => a.viaId === viaId).map(a => a.zonaId || SENZA_ZONA))];
 
 function zoneOrdinate(){
   // stesso ordinamento naturale dei civici: 1a < 1b < 2a < 10a
@@ -603,9 +646,12 @@ const qbox = document.getElementById("q");
 
 function render(){
   const q = qbox.value.trim();
+  // sulla mappa il tasto tondo non ha niente da aggiungere, e copre la scritta sotto
+  document.getElementById("fab").hidden = !q && view.page === "mappa";
   if(q) return renderRicerca(q);
   // una zona eliminata mentre la si guardava riporta all'elenco delle zone
   if(view.zonaId && !zona(view.zonaId)) view = {page:"zone", zonaId:undefined, viaId:null};
+  if(view.page === "mappa") return renderMappa();
   if(view.page === "via" && via(view.viaId)) return renderVia(via(view.viaId));
   if(view.page === "vie") return renderVie();
   view.page = "zone";
@@ -671,6 +717,7 @@ function renderVie(){
     <div class="between" style="margin-bottom:12px">
       <div><span class="badge">${conta(vie.length,"via","vie")}</span>
            <span class="badge">${conta(tot,"nominativo","nominativi")}</span></div>
+      <button onclick="vaiMappa()">&#128506; Mappa del giro</button>
     </div>
     ${vie.length ? `<div class="card">
       ${vie.map(v=>{
@@ -715,7 +762,10 @@ function renderVia(v){
         <h1 class="title">${esc(v.nome)}</h1>
         ${sub ? `<div class="hint">${esc(sub)}</div>`:""}
       </div>
-      <button class="icon" title="Modifica via" onclick="apriVia('${v.id}')">&#9998;</button>
+      <div class="row">
+        <button class="icon" title="Vedi la via sulla mappa" onclick="vaiMappa('${v.id}')">&#128506;</button>
+        <button class="icon" title="Modifica via" onclick="apriVia('${v.id}')">&#9998;</button>
+      </div>
     </div>
 
     ${gruppi.length ? `<div class="card">
@@ -797,6 +847,538 @@ function renderRicerca(q){
       </div>`:""}`;
 }
 
+/* ---------------- Mappa ---------------- */
+/* Le vie dell'archivio sono soltanto nomi: per disegnarle si chiede il tracciato
+   a OpenStreetMap. Di qui escono il nome della via e i comuni, mai un nominativo.
+   I tracciati non finiscono nell'archivio: si richiedono a ogni apertura e
+   restano in memoria finché l'app è aperta. */
+/* Overpass è gratuito e molto usato: una volta su due risponde "sono occupato"
+   (504) e va semplicemente richiesto. Gli altri specchi non servono a niente qui:
+   dal browser o non rispondono o rifiutano la chiamata (niente CORS). */
+const OVERPASS = "https://overpass-api.de/api/interpreter";
+const TENTATIVI = 5;
+const TESSERE = "https://tile.openstreetmap.org/";
+/* Il comune di San Miniato, e basta. Allargando ai comuni attaccati si tirano
+   dentro le omonimie: "Via Corridoni" e "Via Campania" ci sono anche a Santa
+   Croce sull'Arno e a San Romano, e il giro finiva sparpagliato là. */
+const COMUNI_OSM = [3600042546];
+const COLORI_ZONA = ["#e2483d", "#1d5fd6", "#0f7b4f", "#b8860b", "#8e44ad", "#0d7c8c"];
+
+let mappa = null;               // la mappa aperta adesso
+const tracciatiPresi = new Map();  // chiave delle vie chieste -> risposta, per non richiederla
+
+/* Solo lettere e cifre: gli apostrofi e i trattini sono scritti in mille modi */
+const soloLettere = s => [...norm(s)]
+  .map(c => (c >= "a" && c <= "z") || (c >= "0" && c <= "9") ? c : " ").join("");
+const PAROLE_VUOTE = new Set(["via","viale","piazza","piazzale","corso","largo","vicolo",
+  "strada","lungarno","rotonda","viuccia","viuccola","di","del","della","dei","delle",
+  "da","dal","e","a","al","alla"]);
+/* "GRAMSCI ANTONIO" e "Via Antonio Gramsci" devono ritrovarsi: si tengono le
+   parole che contano, l'ordine non conta. */
+const paroleVia = nome => [...new Set(soloLettere(nome).split(" ")
+  .filter(p => p.length > 2 && !PAROLE_VUOTE.has(p)))];
+
+const centroTratto = w => {
+  let la = 0, lo = 0;
+  for(const p of w.geometry){ la += p.lat; lo += p.lon; }
+  return [la/w.geometry.length, lo/w.geometry.length];
+};
+const distanzaKm = (la1, lo1, la2, lo2) =>
+  Math.hypot((la2-la1)*111.2, (lo2-lo1)*111.2*Math.cos(la1*Math.PI/180));
+const mediana = lista => {
+  const s = [...lista].sort((a,b)=> a-b);
+  return s.length ? s[Math.floor(s.length/2)] : null;
+};
+
+/* Il cartello in mezzo alla mappa mentre si aspetta: c'è solo se la pagina
+   della mappa è ancora aperta, e per questo si ricerca ogni volta. */
+function avvisaMappa(testo){
+  const a = document.getElementById("avvisoMappa");
+  if(a) a.textContent = testo;
+}
+
+async function chiediTracciati(nomi){
+  const parole = [...new Set(nomi.flatMap(paroleVia))];
+  if(!parole.length) return [];
+  const chiave = parole.sort().join("|");
+  if(tracciatiPresi.has(chiave)) return tracciatiPresi.get(chiave);
+
+  const filtro = parole.join("|");
+  const query = "[out:json][timeout:120];\n(\n"
+    + COMUNI_OSM.map(id => '  way(area:' + id + ')["highway"]["name"~"' + filtro + '",i];').join("\n")
+    + "\n);\nout geom;";
+  let ultimo = "";
+  for(let tentativo = 0; tentativo < TENTATIVI; tentativo++){
+    if(tentativo){
+      avvisaMappa("OpenStreetMap è occupato: riprovo… (" + (tentativo+1) + " di " + TENTATIVI + ")");
+      await new Promise(f => setTimeout(f, 2000 * tentativo));
+    }
+    let r;
+    try{
+      r = await fetch(OVERPASS, {method:"POST", body:"data=" + encodeURIComponent(query),
+        headers:{"Content-Type":"application/x-www-form-urlencoded"}});
+    }catch(e){ ultimo = "senza rete"; continue; }
+    if(r.ok){
+      const dati = await r.json();
+      const el = (dati.elements || []).filter(w => w.geometry && w.tags && w.tags.name);
+      tracciatiPresi.set(chiave, el);
+      return el;
+    }
+    ultimo = "OpenStreetMap ha risposto " + r.status;
+  }
+  throw new Error(ultimo || "OpenStreetMap non risponde");
+}
+
+const RAGGIO_GIRO = 3;   // km: più in là è un'altra strada con lo stesso nome
+
+function candidatiPerVia(vie, elementi){
+  const m = new Map();
+  for(const v of vie){
+    const k = paroleVia(v.nome);
+    m.set(v.id, k.length
+      ? elementi.filter(w => { const o = paroleVia(w.tags.name); return k.every(p => o.includes(p)); })
+      : []);
+  }
+  return m;
+}
+
+/* Dove sta il giro. "Via Campania", "Via Fiume", "Via Belvedere" esistono in
+   ognuno dei paesi qui intorno, e presa una per una si finisce sparpagliati su
+   mezza provincia. Allora ogni tratto vota il suo quadrato di un chilometro, e
+   vince il quadrato — con quelli che ci stanno attaccati — dove si ritrovano
+   più vie diverse: il giro è là, e le omonimie restano fuori. */
+function centroGiro(candidati){
+  const celle = new Map();
+  for(const [id, lista] of candidati){
+    for(const w of lista){
+      const [la, lo] = centroTratto(w);
+      const k = Math.round(la*100) + ":" + Math.round(lo*100);
+      if(!celle.has(k)) celle.set(k, {vie:new Set(), punti:[]});
+      celle.get(k).vie.add(id);
+      celle.get(k).punti.push([la, lo]);
+    }
+  }
+  let vinta = null;
+  for(const k of celle.keys()){
+    const [a, b] = k.split(":").map(Number);
+    const vie = new Set(), punti = [];
+    for(let da = -1; da <= 1; da++) for(let db = -1; db <= 1; db++){
+      const c = celle.get((a+da) + ":" + (b+db));
+      if(c){ c.vie.forEach(x => vie.add(x)); punti.push(...c.punti); }
+    }
+    if(!vinta || vie.size > vinta.quante) vinta = {quante:vie.size, punti};
+  }
+  return vinta ? [mediana(vinta.punti.map(p=>p[0])), mediana(vinta.punti.map(p=>p[1]))] : null;
+}
+
+function scegliTracciati(vie, candidati, centro){
+  return vie.map(v => {
+    const c = candidati.get(v.id) || [];
+    if(!c.length || !centro) return {via:v, tratti:[], lontana:0};
+    const conD = c.map(w => ({w, d:distanzaKm(centro[0], centro[1], ...centroTratto(w))}))
+                  .sort((a,b)=> a.d - b.d);
+    if(conD[0].d > RAGGIO_GIRO) return {via:v, tratti:[], lontana:conD[0].d};
+    const nomeOsm = conD[0].w.tags.name;
+    const [bLa, bLo] = centroTratto(conD[0].w);
+    // una via lunga su OpenStreetMap è spezzata in tanti tratti: si prendono tutti
+    const tratti = c.filter(w => w.tags.name === nomeOsm
+      && distanzaKm(bLa, bLo, ...centroTratto(w)) < RAGGIO_GIRO);
+    return {via:v, tratti, nomeOsm, lontana:0};
+  });
+}
+
+/* ---- il disegno: tessere sotto, tracciati sopra ---- */
+function proietta(lat, lon, z){
+  const n = 256 * Math.pow(2, z);
+  const s = Math.min(Math.max(Math.sin(lat*Math.PI/180), -0.9999), 0.9999);
+  return [(lon+180)/360*n, (0.5 - Math.log((1+s)/(1-s))/(4*Math.PI))*n];
+}
+
+/* Dal punto sullo schermo alle coordinate: serve quando si tocca la mappa
+   per dire "il civico 12 sta qui". */
+function daPixel(x, y, z){
+  const n = 256 * Math.pow(2, z);
+  const k = Math.PI - 2*Math.PI*y/n;
+  return [180/Math.PI * Math.atan(0.5*(Math.exp(k) - Math.exp(-k))), x/n*360 - 180];
+}
+
+/* I civici sulla mappa. Su OpenStreetMap qui non ci sono (in tutto il comune ne
+   sono mappati 158), quindi la posizione la mette chi fa il giro, un tocco alla
+   volta, e resta salvata nell'archivio insieme ai nominativi. */
+const civiciSullaMappa = viaId => db.civici.filter(c => c.viaId === viaId);
+const civicoSegnato = (viaId, civico) =>
+  db.civici.find(c => c.viaId === viaId && norm(c.civico) === norm(civico));
+const civiciDellaVia = viaId => [...new Set(abitantiDiVia(viaId)
+  .map(a => a.civico).filter(Boolean))].sort(cmpCivico);
+
+function disegnaMappa(){
+  const m = mappa;
+  if(!m || !m.box.isConnected) return;
+  const w = m.box.clientWidth, h = m.box.clientHeight;
+  const x0 = m.cx - w/2, y0 = m.cy - h/2;
+  const n = Math.pow(2, m.z);
+
+  const servono = new Set();
+  for(let tx = Math.floor(x0/256); tx <= Math.floor((x0+w)/256); tx++){
+    for(let ty = Math.floor(y0/256); ty <= Math.floor((y0+h)/256); ty++){
+      if(ty < 0 || ty >= n) continue;
+      const px = ((tx % n) + n) % n;
+      const k = m.z + "/" + px + "/" + ty;
+      servono.add(k);
+      let img = m.tessere.get(k);
+      if(!img){
+        img = document.createElement("img");
+        img.className = "tessera"; img.alt = "";
+        img.src = TESSERE + m.z + "/" + px + "/" + ty + ".png";
+        m.box.insertBefore(img, m.svg);
+        m.tessere.set(k, img);
+      }
+      img.style.left = (tx*256 - x0) + "px";
+      img.style.top = (ty*256 - y0) + "px";
+    }
+  }
+  for(const [k, img] of m.tessere) if(!servono.has(k)){ img.remove(); m.tessere.delete(k); }
+
+  let disegno = "";
+  for(const g of m.gruppi){
+    for(const s of g.scelte){
+      for(const t of s.tratti){
+        const punti = t.geometry.map(p => {
+          const [px, py] = proietta(p.lat, p.lon, m.z);
+          return (px-x0).toFixed(1) + "," + (py-y0).toFixed(1);
+        }).join(" ");
+        disegno += '<polyline points="' + punti + '" fill="none" stroke="' + g.colore
+          + '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"'
+          + (s.incerta ? ' opacity=".45" stroke-dasharray="3 9"' : ' opacity=".8"') + ">"
+          + "<title>" + esc(s.via.nome) + (s.incerta ? " (da controllare)" : "")
+          + "</title></polyline>";
+      }
+    }
+  }
+  // i civici collegati: un bollo col numero dentro, e si tengono da parte le
+  // posizioni sullo schermo per sapere dov'è che si tocca
+  m.segni = [];
+  for(const c of m.civici){
+    const [px, py] = proietta(c.lat, c.lon, m.z);
+    const x = px - x0, y = py - y0;
+    if(x < -30 || y < -30 || x > w+30 || y > h+30) continue;
+    m.segni.push({civico:c, x, y});
+    const largo = Math.max(22, 9 + String(c.civico).length * 7);
+    disegno += '<g><rect x="' + (x-largo/2).toFixed(1) + '" y="' + (y-11).toFixed(1)
+      + '" width="' + largo + '" height="22" rx="11" fill="#fff" stroke="#1b1d21" stroke-width="1.5"/>'
+      + '<text x="' + x.toFixed(1) + '" y="' + (y+4).toFixed(1) + '" text-anchor="middle"'
+      + ' font-size="12" font-weight="700" fill="#1b1d21">' + esc(c.civico) + "</text>"
+      + "<title>" + esc(nomeVia(c.viaId)) + " " + esc(c.civico) + "</title></g>";
+  }
+  m.svg.innerHTML = disegno;
+}
+
+function zoomMappa(passo, ancoraX, ancoraY){
+  const m = mappa;
+  if(!m) return;
+  const z2 = Math.min(19, Math.max(11, m.z + passo));
+  if(z2 === m.z) return;
+  const w = m.box.clientWidth, h = m.box.clientHeight;
+  const ax = ancoraX === undefined ? w/2 : ancoraX;
+  const ay = ancoraY === undefined ? h/2 : ancoraY;
+  const f = Math.pow(2, z2 - m.z);
+  // il punto sotto il dito resta dov'è
+  m.cx = (m.cx - w/2 + ax)*f - ax + w/2;
+  m.cy = (m.cy - h/2 + ay)*f - ay + h/2;
+  m.z = z2;
+  m.tessere.forEach(i => i.remove());
+  m.tessere.clear();
+  disegnaMappa();
+}
+
+function inquadra(gruppi, box){
+  const punti = [];
+  // l'inquadratura la danno le vie sicure: dietro a un'omonima lontana la mappa
+  // si allargherebbe fino a non far vedere più niente del giro
+  for(const g of gruppi) for(const s of g.scelte) if(!s.incerta)
+    for(const t of s.tratti) punti.push(...t.geometry);
+  if(!punti.length)
+    for(const g of gruppi) for(const s of g.scelte) for(const t of s.tratti) punti.push(...t.geometry);
+  if(!punti.length) return null;
+  const laMin = Math.min(...punti.map(p=>p.lat)), laMax = Math.max(...punti.map(p=>p.lat));
+  const loMin = Math.min(...punti.map(p=>p.lon)), loMax = Math.max(...punti.map(p=>p.lon));
+  const w = box.clientWidth || 320, h = box.clientHeight || 400;
+  let z = 19;
+  while(z > 11){
+    const [x1,y1] = proietta(laMax, loMin, z), [x2,y2] = proietta(laMin, loMax, z);
+    if(x2-x1 < w-40 && y2-y1 < h-40) break;
+    z--;
+  }
+  const [cx, cy] = proietta((laMin+laMax)/2, (loMin+loMax)/2, z);
+  return {z, cx, cy};
+}
+
+function collegaMani(box){
+  const dita = new Map();
+  let distanza = 0;
+  box.onpointerdown = ev => {
+    box.setPointerCapture(ev.pointerId);
+    dita.set(ev.pointerId, {x:ev.clientX, y:ev.clientY, mosso:0});
+    box.classList.add("trascino");
+  };
+  box.onpointermove = ev => {
+    const d = dita.get(ev.pointerId);
+    if(!d) return;
+    d.mosso += Math.hypot(ev.clientX - d.x, ev.clientY - d.y);
+    if(dita.size === 1){
+      mappa.cx -= ev.clientX - d.x;
+      mappa.cy -= ev.clientY - d.y;
+      disegnaMappa();
+    }
+    d.x = ev.clientX; d.y = ev.clientY;
+    if(dita.size === 2){
+      const [a, b] = [...dita.values()];
+      const nuova = Math.hypot(a.x-b.x, a.y-b.y);
+      if(!distanza) distanza = nuova;
+      const r = box.getBoundingClientRect();
+      // due dita: si allarga e si stringe a scatti di uno zoom
+      if(nuova > distanza*1.7){ zoomMappa(1, (a.x+b.x)/2 - r.left, (a.y+b.y)/2 - r.top); distanza = nuova; }
+      if(nuova < distanza/1.7){ zoomMappa(-1, (a.x+b.x)/2 - r.left, (a.y+b.y)/2 - r.top); distanza = nuova; }
+    }
+  };
+  const molla = ev => {
+    const d = dita.get(ev.pointerId);
+    dita.delete(ev.pointerId);
+    if(dita.size < 2) distanza = 0;
+    if(!dita.size) box.classList.remove("trascino");
+    // fermo com'è rimasto il dito: è un tocco, non un trascinamento
+    if(d && d.mosso < 7 && ev.type === "pointerup") toccoMappa(ev);
+  };
+  box.onpointerup = molla;
+  box.onpointercancel = molla;
+  /* La rotella ingrandisce solo col Ctrl premuto: se no, scorrendo la pagina
+     sopra la mappa, invece di arrivare all'elenco dei civici si finisce a
+     zoomare senza volerlo. Restano i tasti + e -, e il doppio clic. */
+  box.onwheel = ev => {
+    if(!ev.ctrlKey && !ev.metaKey) return;
+    ev.preventDefault();
+    const r = box.getBoundingClientRect();
+    zoomMappa(ev.deltaY < 0 ? 1 : -1, ev.clientX - r.left, ev.clientY - r.top);
+  };
+  box.ondblclick = ev => {
+    const r = box.getBoundingClientRect();
+    zoomMappa(1, ev.clientX - r.left, ev.clientY - r.top);
+  };
+}
+
+/* Un tocco sulla mappa: se c'è un civico in attesa lo mette lì, se no guarda
+   se si è toccato un bollo e apre chi ci abita. */
+function toccoMappa(ev){
+  const m = mappa;
+  if(!m) return;
+  const r = m.box.getBoundingClientRect();
+  const x = ev.clientX - r.left, y = ev.clientY - r.top;
+  if(m.daPiazzare) return piazzaCivico(x, y);
+  const vicino = m.segni.map(s => ({s, d:Math.hypot(s.x - x, s.y - y)}))
+                        .filter(o => o.d < 22).sort((a,b)=> a.d - b.d)[0];
+  if(vicino) apriCivicoMappa(vicino.s.civico);
+}
+
+function piazzaCivico(x, y){
+  const m = mappa;
+  const numero = m.daPiazzare;
+  const [lat, lon] = daPixel(m.cx - m.box.clientWidth/2 + x,
+                             m.cy - m.box.clientHeight/2 + y, m.z);
+  const gia = civicoSegnato(m.viaCollegabile, numero);
+  if(gia) tocca(Object.assign(gia, {lat, lon}));
+  else db.civici.push(tocca({id:uid(), viaId:m.viaCollegabile, civico:numero, lat, lon}));
+  save();
+  m.civici = civiciSullaMappa(m.viaCollegabile);
+  // il prossimo da mettere si arma da solo: così se ne collegano tanti di fila
+  const restanti = civiciDellaVia(m.viaCollegabile)
+    .filter(c => !civicoSegnato(m.viaCollegabile, c));
+  m.daPiazzare = restanti[0] || null;
+  m.box.classList.toggle("punta", !!m.daPiazzare);
+  disegnaMappa();
+  pannelloCivici();
+  toast(restanti.length ? "Civico " + numero + " collegato. Tocca dov'è il " + restanti[0]
+                        : "Civico " + numero + " collegato: c'erano tutti");
+}
+
+function armaCivico(numero){
+  const m = mappa;
+  if(!m) return;
+  m.daPiazzare = m.daPiazzare === numero ? null : numero;
+  m.box.classList.toggle("punta", !!m.daPiazzare);
+  pannelloCivici();
+}
+
+function pannelloCivici(){
+  const box = document.getElementById("pannelloCivici");
+  const m = mappa;
+  if(!box || !m || !m.viaCollegabile) return;
+  const tutti = civiciDellaVia(m.viaCollegabile);
+  const restanti = tutti.filter(c => !civicoSegnato(m.viaCollegabile, c));
+  box.innerHTML = `
+    <div class="civico-head">Civici sulla mappa
+      <small>${tutti.length - restanti.length} di ${tutti.length}</small></div>
+    <div style="padding:10px 12px 13px">
+      <div class="hint">${m.daPiazzare
+        ? "Tocca sulla mappa dov'è il <b>civico " + esc(m.daPiazzare) + "</b>."
+        : restanti.length
+          ? "Tocca un numero, poi tocca il punto sulla mappa. Il numero dopo si arma da solo."
+          : "Collegati tutti. Tocca un bollo sulla mappa per vedere chi ci abita."}</div>
+      <div class="civ-elenco">
+        ${tutti.map(c => `<button class="civ-chip ${m.daPiazzare === c ? "armato"
+            : civicoSegnato(m.viaCollegabile, c) ? "messo" : ""}"
+            onclick="armaCivico('${esc(c).replace(/'/g,"&#39;")}')">${esc(c)}</button>`).join("")}
+      </div>
+    </div>`;
+}
+
+function apriCivicoMappa(c){
+  const v = via(c.viaId);
+  const gente = abitantiOrdinati(abitantiDiVia(c.viaId).filter(a => norm(a.civico) === norm(c.civico)));
+  document.getElementById("civTitolo").textContent = (v ? v.nome : "") + " " + c.civico;
+  document.getElementById("civQuanti").textContent =
+    conta(gente.length, "nominativo", "nominativi");
+  document.getElementById("civElenco").innerHTML = gente.length
+    ? `<div class="card">${gente.map(a => `
+        <div class="person">
+          <div class="who">
+            <b>${esc(a.nome)}</b>
+            <div class="meta">${a.interno ? "int. " + esc(a.interno) : "&nbsp;"}</div>
+            ${a.note ? `<div class="note">${esc(a.note)}</div>` : ""}
+          </div>
+        </div>`).join("")}</div>`
+    : `<p class="hint">Qui non c'è nessuno: il civico è rimasto senza nominativi.</p>`;
+  document.getElementById("dlgCivico").dataset.civico = c.id;
+  document.getElementById("dlgCivico").showModal();
+}
+
+document.getElementById("civSposta").onclick = ()=>{
+  const c = db.civici.find(x => x.id === document.getElementById("dlgCivico").dataset.civico);
+  document.getElementById("dlgCivico").close();
+  if(!c || !mappa) return;
+  mappa.viaCollegabile = c.viaId;
+  mappa.daPiazzare = c.civico;
+  mappa.box.classList.add("punta");
+  pannelloCivici();
+  toast("Tocca il punto giusto per il civico " + c.civico);
+};
+document.getElementById("civTogli").onclick = ()=>{
+  const dlg = document.getElementById("dlgCivico");
+  const c = db.civici.find(x => x.id === dlg.dataset.civico);
+  dlg.close();
+  if(!c) return;
+  segnaCancellati([c.id]);
+  db.civici = db.civici.filter(x => x.id !== c.id);
+  save();
+  if(mappa){
+    mappa.civici = mappa.civici.filter(x => x.id !== c.id);
+    disegnaMappa();
+    pannelloCivici();
+  }
+  toast("Civico " + c.civico + " tolto dalla mappa");
+};
+
+function renderMappa(){
+  mappa = null;
+  const unaVia = view.viaId ? via(view.viaId) : null;
+  const z = view.zonaId;
+  const zone = unaVia ? [] : (z === undefined ? zoneOrdinate() : [zona(z)].filter(Boolean));
+  const titolo = unaVia ? esc(unaVia.nome)
+               : z === undefined ? "Mappa di tutte le zone"
+               : "Mappa della zona " + esc(nomeZona(z));
+  const daDove = unaVia ? esc(unaVia.nome)
+               : z === undefined ? "Tutte le vie" : "Zona " + esc(nomeZona(z));
+
+  app.innerHTML = `
+    <div class="crumb">
+      <button class="link" onclick="vaiZone()">Zone</button>
+      <span>&rsaquo;</span>
+      <button class="link" onclick="${unaVia ? "vaiVia('"+unaVia.id+"')" : "tornaAlleVie()"}">${daDove}</button>
+    </div>
+    <h1 class="title" style="margin-bottom:12px">${titolo}</h1>
+    <div class="mappa" id="boxMappa">
+      <svg id="disegnoMappa"></svg>
+      <div class="zoom">
+        <button type="button" title="Ingrandisci" onclick="zoomMappa(1)">+</button>
+        <button type="button" title="Rimpicciolisci" onclick="zoomMappa(-1)">&minus;</button>
+      </div>
+      <div class="credito">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>
+      <div class="avviso" id="avvisoMappa">Chiedo le strade a OpenStreetMap…</div>
+    </div>
+    <div class="legenda" id="legendaMappa"></div>
+    ${unaVia ? `<div class="card" id="pannelloCivici" style="margin-top:12px"></div>` : ""}
+    <p class="hint" id="notaMappa" style="margin-top:10px"></p>`;
+
+  caricaMappa(unaVia, zone);
+}
+
+async function caricaMappa(unaVia, zone){
+  const box = document.getElementById("boxMappa");
+  const avviso = document.getElementById("avvisoMappa");
+  const gruppi = unaVia
+    ? [{nome:unaVia.nome, colore:COLORI_ZONA[0], vie:[unaVia]}]
+    : zone.map((z, i) => ({nome:z.nome, colore:COLORI_ZONA[i % COLORI_ZONA.length],
+                           vie:vieDiZona(z.id).filter(v => abitantiDiVia(v.id, z.id).length)}));
+  const nomi = gruppi.flatMap(g => g.vie.map(v => v.nome));
+  if(!nomi.length){ avviso.textContent = "Qui non c'è nessuna via da mostrare."; return; }
+
+  /* Anche per una via sola si chiede tutto il giro: da sola non si saprebbe
+     quale delle omonime è quella giusta, in compagnia sì. */
+  const vieDelGiro = zoneOrdinate().flatMap(z => vieDiZona(z.id)
+    .filter(v => abitantiDiVia(v.id, z.id).length));
+
+  let elementi;
+  try{
+    elementi = await chiediTracciati(vieDelGiro.map(v => v.nome).concat(nomi));
+  }catch(e){
+    avviso.innerHTML = esc(e.message) + ".<br>La mappa ha bisogno della rete: riprova fra un momento.";
+    return;
+  }
+  if(!box.isConnected) return;   // nel frattempo si è cambiata pagina
+
+  const riferimento = unaVia
+    ? (zoneDellaVia(unaVia.id).flatMap(z => vieDiZona(z).filter(v => abitantiDiVia(v.id, z).length)))
+    : gruppi.flatMap(g => g.vie);
+  const centro = centroGiro(candidatiPerVia(riferimento.length ? riferimento : vieDelGiro, elementi));
+  for(const g of gruppi) g.scelte = scegliTracciati(g.vie, candidatiPerVia(g.vie, elementi), centro);
+
+  /* Quel che resta fuori dal gruppo è quasi sempre l'omonima di un altro paese:
+     "Via Corridoni" c'è qui e c'è a Santa Croce. Quale sia quella giusta lo sa
+     chi fa il giro, non l'app: si disegnano tratteggiate e si elencano. */
+  const presi = gruppi.flatMap(g => g.scelte.filter(s => s.tratti.length));
+  const mLa = mediana(presi.map(s => centroTratto(s.tratti[0])[0]));
+  const mLo = mediana(presi.map(s => centroTratto(s.tratti[0])[1]));
+  for(const s of presi) s.incerta = distanzaKm(mLa, mLo, ...centroTratto(s.tratti[0])) > 2;
+  const inquadratura = inquadra(gruppi, box);
+  if(!inquadratura){
+    avviso.textContent = "Nessuna di queste vie si trova su OpenStreetMap.";
+    return;
+  }
+  avviso.remove();
+  mappa = {box, svg:document.getElementById("disegnoMappa"), gruppi,
+           tessere:new Map(), segni:[], z:inquadratura.z, cx:inquadratura.cx, cy:inquadratura.cy,
+           viaCollegabile: unaVia ? unaVia.id : null, daPiazzare:null,
+           civici: unaVia ? civiciSullaMappa(unaVia.id)
+                 : db.civici.filter(c => gruppi.some(g => g.vie.some(v => v.id === c.viaId)))};
+  collegaMani(box);
+  disegnaMappa();
+  pannelloCivici();
+  addEventListener("resize", disegnaMappa);
+
+  document.getElementById("legendaMappa").innerHTML = gruppi
+    .map(g => '<span><i style="background:' + g.colore + '"></i>' + esc(g.nome) + "</span>").join("");
+
+  const senza = gruppi.flatMap(g => g.scelte.filter(s => !s.tratti.length));
+  const incerte = presi.filter(s => s.incerta);
+  const nota = ["Disegnate " + conta(presi.length - incerte.length, "via", "vie")
+                + " su " + (presi.length + senza.length) + "."];
+  if(incerte.length) nota.push("Tratteggiate perché cadono lontano dalle altre, "
+    + "e potrebbero essere le omonime di un altro paese: <b>"
+    + esc(incerte.map(s => s.via.nome).join(", ")) + "</b>.");
+  if(senza.length) nota.push("Non trovate su OpenStreetMap: <b>"
+    + esc(senza.map(s => s.via.nome).join(", ")) + "</b>.");
+  document.getElementById("notaMappa").innerHTML = nota.join(" ");
+}
+
 /* ---------------- Navigazione ---------------- */
 function vai(v){ qbox.value=""; view = v; window.scrollTo(0,0); render(); }
 function vaiZone(){ vai({page:"zone", zonaId:undefined, viaId:null}); }
@@ -805,6 +1387,7 @@ function vaiTutteLeVie(){ vai({page:"vie", zonaId:undefined, viaId:null}); }
 function tornaAlleVie(){ vai({page:"vie", zonaId:view.zonaId, viaId:null}); }
 function vaiVia(id){ vai({page:"via", zonaId:view.zonaId, viaId:id}); }
 function vaiViaCompleta(id){ vai({page:"via", zonaId:undefined, viaId:id}); }
+function vaiMappa(viaId){ vai({page:"mappa", zonaId:view.zonaId, viaId:viaId || null}); }
 function pulisciRicerca(){ qbox.value=""; render(); }
 
 /* ---------------- Form: ZONA ---------------- */
@@ -951,8 +1534,10 @@ document.getElementById("viaDelete").onclick = async ()=>{
       : `Se ne vanno anche i ${n} nominativi di questa via. Non si può annullare.`
   });
   if(!ok) return;
-  segnaCancellati([v.id, ...abitantiDiVia(v.id).map(a => a.id)]);
+  segnaCancellati([v.id, ...abitantiDiVia(v.id).map(a => a.id),
+                   ...db.civici.filter(c => c.viaId === v.id).map(c => c.id)]);
   db.abitanti = db.abitanti.filter(a => a.viaId !== v.id);
+  db.civici = db.civici.filter(c => c.viaId !== v.id);
   db.vie = db.vie.filter(x => x.id !== v.id);
   save();
   document.getElementById("dlgVia").close();
@@ -1159,9 +1744,10 @@ document.getElementById("fileImport").onchange = ev=>{
     if(scelta){
       // quello che c'era prima va segnato come cancellato, se no torna
       // indietro dall'altro dispositivo alla prima sincronizzazione
-      const vecchi = [...db.zone, ...db.vie, ...db.abitanti].map(r => r.id);
-      db = normalizza({version:1, zone:d.zone||[], vie:d.vie, abitanti:d.abitanti, cancellati:db.cancellati});
-      const rimasti = new Set([...db.zone, ...db.vie, ...db.abitanti].map(r => r.id));
+      const vecchi = [...db.zone, ...db.vie, ...db.abitanti, ...db.civici].map(r => r.id);
+      db = normalizza({version:1, zone:d.zone||[], vie:d.vie, abitanti:d.abitanti,
+                       civici:d.civici||[], cancellati:db.cancellati});
+      const rimasti = new Set([...db.zone, ...db.vie, ...db.abitanti, ...db.civici].map(r => r.id));
       segnaCancellati(vecchi.filter(id => !rimasti.has(id)));
     }else{
       const mappa = {};
@@ -1180,6 +1766,12 @@ document.getElementById("fileImport").onchange = ev=>{
         db.abitanti.push(tocca({...a, id:uid(), viaId: mappa[a.viaId] || a.viaId,
                                  zonaId: a.zonaId ? (mappa[a.zonaId] || a.zonaId) : SENZA_ZONA}));
       }
+      // i civici messi sulla mappa dall'altro archivio: quelli che qui ci sono
+      // già restano dove li abbiamo messi noi, gli altri si aggiungono
+      for(const c of (d.civici || [])){
+        const viaId = mappa[c.viaId] || c.viaId;
+        if(!civicoSegnato(viaId, c.civico)) db.civici.push(tocca({...c, id:uid(), viaId}));
+      }
     }
     save();
     document.getElementById("dlgMenu").close();
@@ -1197,8 +1789,8 @@ document.getElementById("btnWipe").onclick = async ()=>{
   });
   if(!ok) return;
   if(!await chiedi({titolo:"Sicuro?", testo:"Ultima chiamata.", conferma:"Sì, cancella"})) return;
-  segnaCancellati([...db.zone, ...db.vie, ...db.abitanti].map(r => r.id));
-  db = {version:1, zone:[], vie:[], abitanti:[], cancellati:db.cancellati};
+  segnaCancellati([...db.zone, ...db.vie, ...db.abitanti, ...db.civici].map(r => r.id));
+  db = {version:1, zone:[], vie:[], abitanti:[], civici:[], cancellati:db.cancellati};
   save();
   document.getElementById("dlgMenu").close();
   vaiZone();
@@ -1397,6 +1989,7 @@ function unisci(a, b){
     zone: fondi(a.zone, b.zone),
     vie: fondi(a.vie, b.vie),
     abitanti: fondi(a.abitanti, b.abitanti),
+    civici: fondi(a.civici, b.civici),
     cancellati: [...tombe].map(([id, agg]) => ({id, agg})).filter(t => t.agg > limite)
   };
 }

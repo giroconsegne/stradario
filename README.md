@@ -22,6 +22,16 @@ si apre una via e vengono fuori i nominativi raggruppati per civico.
   parole, così si può scrivere l'indirizzo di seguito: `gramsci 12`, `fiume 3 int 1`.
   Il civico si confronta per intero, quindi `12` non tira dentro il 120 e il 121.
   Scorciatoia: `/`.
+- **Mappa**: dall'elenco delle vie, "Mappa del giro" disegna le vie della zona
+  evidenziate, un colore per zona; dentro una via, il tasto con la cartina mostra
+  quella sola. Le vie che cadono lontano dalle altre sono tratteggiate: quasi sempre
+  sono omonime di un altro paese, e vanno controllate.
+- **Civici sulla mappa**: sulla mappa di una via si tocca un numero e poi il punto
+  dove sta, e il civico resta lì; il numero dopo si arma da solo. Toccando un civico
+  già messo si apre chi ci abita, con gli interni. La posizione va **salvata**
+  nell'archivio, se no il lavoro si perderebbe: entra nel backup e nella
+  sincronizzazione come i nominativi. Su OpenStreetMap i civici di qui non ci sono
+  (158 in tutto il comune, 4 dei nostri), per questo si mettono a mano.
 - **Backup**: esportazione e importazione in JSON, esportazione in CSV per Excel.
 - **Sincronizzazione** facoltativa fra PC e telefono, da accendere a mano.
 
@@ -32,6 +42,13 @@ si apre una via e vengono fuori i nominativi raggruppati per civico.
 dispositivo, nemmeno quando l'app è pubblicata online (viene servita la pagina,
 non i dati). PC e telefono restano due archivi separati, e se si puliscono i dati
 di navigazione l'archivio sparisce — per questo c'è l'esportazione del backup.
+
+**La mappa è l'unica eccezione**, e vale solo mentre la guardi: per disegnare le
+strade l'app chiede i tracciati a OpenStreetMap, quindi escono da qui i **nomi delle
+vie** e il comune in cui cercarle (`COMUNI_OSM` in `index.html`, oggi San Miniato).
+Nomi, civici e interni dei residenti non partono mai, e i tracciati non vengono
+salvati: si richiedono a ogni apertura della mappa. Senza rete la mappa non si apre;
+il resto dell'app continua a funzionare.
 
 **Se accendi la sincronizzazione** (facoltativa, spenta finché non la configuri):
 l'archivio viene tenuto allineato fra i dispositivi passando da Firebase, quindi

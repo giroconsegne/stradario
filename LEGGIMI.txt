@@ -57,8 +57,34 @@ COME SI USA
    "gramsci 12" oppure "fiume 3 int 1". Il civico deve essere quello
    giusto per intero: cercando 12 non escono il 120 e il 121.
 
+8. LA MAPPA. Dentro una zona, il tasto "Mappa del giro" fa vedere le vie di
+   quel giro evidenziate sulla cartina, un colore per zona. Dentro una via,
+   il tasto con la cartina in alto mostra quella sola. Si trascina col dito
+   e si ingrandisce con due dita o coi tasti + e -.
+   Le vie tratteggiate sono quelle che cadono lontano dalle altre: quasi
+   sempre e' un'altra strada con lo stesso nome in un paese vicino, quindi
+   guardale prima di fidarti. Quelle che su OpenStreetMap non ci sono
+   proprio vengono elencate sotto la mappa.
+   La mappa ha bisogno della rete, il resto dell'app no.
+
+9. I CIVICI SULLA MAPPA. Sotto la mappa di una via c'e' l'elenco dei suoi
+   civici. Tocchi il numero, poi tocchi sulla mappa il punto dove sta, e
+   il civico resta li'. Il numero dopo si arma da solo, cosi' ne metti
+   tanti di fila. Toccando un civico gia' messo si apre la finestra con
+   i nomi che hai salvato a quel numero, interni compresi; da li' lo
+   puoi spostare o togliere dalla mappa.
+   I civici su OpenStreetMap qui non ci sono (nel comune ne risultano
+   158, e dei nostri 4), per questo tocca metterli a mano.
+   La posizione resta salvata nell'archivio, quindi entra nel backup e
+   nella sincronizzazione: quello che colleghi sul PC lo ritrovi sul
+   telefono. Non c'e' nessun obbligo di metterli tutti: quelli che
+   colleghi si vedono, gli altri semplicemente non ci sono ancora.
+
 DOVE SONO I DATI
 Solo sul dispositivo, dentro il browser. Niente internet, nessun account.
+Unica eccezione la mappa: per disegnare le strade chiede i tracciati a
+OpenStreetMap, e per farlo manda fuori i NOMI DELLE VIE e il comune.
+I nominativi non partono mai, nemmeno da li'.
 Se vuoi che PC e telefono lavorino sullo stesso archivio si puo' accendere
 la sincronizzazione: istruzioni in SINCRONIZZAZIONE.txt. Finche' non la
 configuri non cambia niente e i dati non escono da qui.
