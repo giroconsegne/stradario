@@ -5,7 +5,7 @@
    verso altri domini: qui sotto vengono lasciate passare senza toccarle).
    Dopo aver modificato index.html cambia il numero di versione qui sotto:
    al ricaricamento la vecchia copia viene buttata e sostituita. */
-const VERSIONE = "stradario-v16";
+const VERSIONE = "stradario-v17";
 
 const RISORSE = [
   "./",

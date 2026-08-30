@@ -1051,13 +1051,17 @@ const civiciDellaVia = viaId => [...new Set(abitantiDiVia(viaId)
 function costruisciDisegno(){
   const m = mappa;
   if(!m) return;
+  /* Non in coordinate del mondo: a zoom 19 sono numeri da settanta milioni, e
+     l'SVG a quelle grandezze perde precisione — la via spariva. Si disegna
+     rispetto a un'origine presa qui vicino, e restano numeri di poche migliaia. */
+  m.origine = [Math.round(m.cx), Math.round(m.cy)];
   let disegno = "";
   for(const g of m.gruppi){
     for(const s of g.scelte){
       for(const t of s.tratti){
         const punti = t.geometry.map(p => {
           const [px, py] = proietta(p.lat, p.lon, m.z);
-          return px.toFixed(1) + "," + py.toFixed(1);
+          return (px - m.origine[0]).toFixed(1) + "," + (py - m.origine[1]).toFixed(1);
         }).join(" ");
         disegno += '<polyline points="' + punti + '" fill="none" stroke="' + g.colore
           + '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"'
@@ -1071,8 +1075,9 @@ function costruisciDisegno(){
   // del mondo: per sapere dove si è toccato basta togliere l'angolo della vista
   m.segni = [];
   for(const c of m.civici){
-    const [x, y] = proietta(c.lat, c.lon, m.z);
-    m.segni.push({civico:c, x, y});
+    const [mondoX, mondoY] = proietta(c.lat, c.lon, m.z);
+    m.segni.push({civico:c, x:mondoX, y:mondoY});
+    const x = mondoX - m.origine[0], y = mondoY - m.origine[1];
     const largo = Math.max(22, 9 + String(c.civico).length * 7);
     disegno += '<g><rect x="' + (x-largo/2).toFixed(1) + '" y="' + (y-11).toFixed(1)
       + '" width="' + largo + '" height="22" rx="11" fill="#fff" stroke="#1b1d21" stroke-width="1.5"/>'
@@ -1111,7 +1116,13 @@ function spostaMappa(){
     }
   }
   for(const [k, img] of m.tessere) if(!servono.has(k)){ img.remove(); m.tessere.delete(k); }
-  if(m.strato) m.strato.setAttribute("transform", "translate(" + (-x0) + " " + (-y0) + ")");
+  // allontanandosi troppo dall'origine i numeri tornerebbero a crescere:
+  // si rifà il disegno attorno a dove siamo adesso
+  if(m.origine && (Math.abs(m.cx - m.origine[0]) > 20000 || Math.abs(m.cy - m.origine[1]) > 20000))
+    costruisciDisegno();
+  if(m.strato && m.origine)
+    m.strato.setAttribute("transform",
+      "translate(" + (m.origine[0] - x0) + " " + (m.origine[1] - y0) + ")");
 }
 
 /* Trascinando arrivano molti più eventi che fotogrammi: si ridisegna una volta
