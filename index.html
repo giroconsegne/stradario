@@ -169,8 +169,8 @@
   .mappa{position:relative; height:min(68vh, 560px); border-radius:12px; overflow:hidden;
     border:1px solid var(--line); background:var(--bg); touch-action:none; cursor:grab}
   .mappa.trascino{cursor:grabbing}
-  .mappa img.tessera{position:absolute; width:256px; height:256px; -webkit-user-drag:none;
-    user-select:none; pointer-events:none}
+  .mappa img.tessera{position:absolute; top:0; left:0; width:256px; height:256px;
+    -webkit-user-drag:none; user-select:none; pointer-events:none}
   .mappa svg{position:absolute; inset:0; width:100%; height:100%; pointer-events:none}
   .mappa .zoom{position:absolute; right:10px; top:10px; display:flex; flex-direction:column; gap:6px}
   .mappa .zoom button{width:36px; height:36px; padding:0; font-size:19px; line-height:1;
@@ -931,13 +931,46 @@ async function chiediTracciati(nomi){
 
 const RAGGIO_GIRO = 3;   // km: più in là è un'altra strada con lo stesso nome
 
+/* Una lettera di differenza è ancora la stessa parola: sul quaderno c'è
+   "CALAMANDREI PIERO" e su OpenStreetMap "Via Pietro Calamandrei", "CARDI
+   LODOVICO" contro "Ludovico Cardi". Solo da cinque lettere in su, se no
+   "porte" e "corte" diventerebbero la stessa via. */
+function unaLetteraDiDifferenza(a, b){
+  if(a === b) return true;
+  if(a.length < 5 || b.length < 5) return false;
+  if(Math.abs(a.length - b.length) > 1) return false;
+  // l'iniziale deve tornare: "cervi" e "servi", "porte" e "corte" sono due
+  // parole diverse, non la stessa scritta male
+  if(a[0] !== b[0]) return false;
+  const corta = a.length <= b.length ? a : b, lunga = a.length <= b.length ? b : a;
+  let i = 0, j = 0, errori = 0;
+  while(i < corta.length && j < lunga.length){
+    if(corta[i] === lunga[j]){ i++; j++; continue; }
+    if(++errori > 1) return false;
+    if(corta.length === lunga.length){ i++; j++; }   // una lettera cambiata
+    else j++;                                        // una lettera in più
+  }
+  return errori + (lunga.length - j) + (corta.length - i) <= 1;
+}
+
 function candidatiPerVia(vie, elementi){
   const m = new Map();
   for(const v of vie){
     const k = paroleVia(v.nome);
-    m.set(v.id, k.length
-      ? elementi.filter(w => { const o = paroleVia(w.tags.name); return k.every(p => o.includes(p)); })
-      : []);
+    if(!k.length){ m.set(v.id, []); continue; }
+    const preciso = elementi.filter(w => {
+      const o = paroleVia(w.tags.name);
+      return k.every(p => o.includes(p));
+    });
+    /* La lettera storpiata è solo un ripiego: se la via si ritrova scritta
+       uguale si tiene quella, se no "DELLE PORTE" andava a finire sulla
+       Provinciale del Ponte a Egola. E di storpiata ne passa una per nome. */
+    m.set(v.id, preciso.length ? preciso : elementi.filter(w => {
+      const o = paroleVia(w.tags.name);
+      let storpiate = 0;
+      return k.every(p => o.includes(p)
+        || (!storpiate && o.some(x => unaLetteraDiDifferenza(x, p)) && ++storpiate));
+    }));
   }
   return m;
 }
@@ -1011,7 +1044,48 @@ const civicoSegnato = (viaId, civico) =>
 const civiciDellaVia = viaId => [...new Set(abitantiDiVia(viaId)
   .map(a => a.civico).filter(Boolean))].sort(cmpCivico);
 
-function disegnaMappa(){
+/* Il disegno è diviso in due, se no trascinare la mappa era a scatti: le vie e
+   i civici si costruiscono una volta sola per livello di zoom, in coordinate del
+   mondo, e spostandosi si sposta solo il disegno già pronto — un attributo, non
+   cento tracciati da rifare a ogni pixel. */
+function costruisciDisegno(){
+  const m = mappa;
+  if(!m) return;
+  let disegno = "";
+  for(const g of m.gruppi){
+    for(const s of g.scelte){
+      for(const t of s.tratti){
+        const punti = t.geometry.map(p => {
+          const [px, py] = proietta(p.lat, p.lon, m.z);
+          return px.toFixed(1) + "," + py.toFixed(1);
+        }).join(" ");
+        disegno += '<polyline points="' + punti + '" fill="none" stroke="' + g.colore
+          + '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"'
+          + (s.incerta ? ' opacity=".45" stroke-dasharray="3 9"' : ' opacity=".8"') + ">"
+          + "<title>" + esc(s.via.nome) + (s.incerta ? " (da controllare)" : "")
+          + "</title></polyline>";
+      }
+    }
+  }
+  // i civici collegati: un bollo col numero dentro. Le posizioni restano quelle
+  // del mondo: per sapere dove si è toccato basta togliere l'angolo della vista
+  m.segni = [];
+  for(const c of m.civici){
+    const [x, y] = proietta(c.lat, c.lon, m.z);
+    m.segni.push({civico:c, x, y});
+    const largo = Math.max(22, 9 + String(c.civico).length * 7);
+    disegno += '<g><rect x="' + (x-largo/2).toFixed(1) + '" y="' + (y-11).toFixed(1)
+      + '" width="' + largo + '" height="22" rx="11" fill="#fff" stroke="#1b1d21" stroke-width="1.5"/>'
+      + '<text x="' + x.toFixed(1) + '" y="' + (y+4).toFixed(1) + '" text-anchor="middle"'
+      + ' font-size="12" font-weight="700" fill="#1b1d21">' + esc(c.civico) + "</text>"
+      + "<title>" + esc(nomeVia(c.viaId)) + " " + esc(c.civico) + "</title></g>";
+  }
+  m.svg.innerHTML = '<g id="stratoMappa">' + disegno + "</g>";
+  m.strato = m.svg.firstChild;
+}
+
+/* Lo spostamento vero e proprio: le tessere che servono, e il disegno traslato. */
+function spostaMappa(){
   const m = mappa;
   if(!m || !m.box.isConnected) return;
   const w = m.box.clientWidth, h = m.box.clientHeight;
@@ -1033,44 +1107,25 @@ function disegnaMappa(){
         m.box.insertBefore(img, m.svg);
         m.tessere.set(k, img);
       }
-      img.style.left = (tx*256 - x0) + "px";
-      img.style.top = (ty*256 - y0) + "px";
+      img.style.transform = "translate(" + (tx*256 - x0) + "px," + (ty*256 - y0) + "px)";
     }
   }
   for(const [k, img] of m.tessere) if(!servono.has(k)){ img.remove(); m.tessere.delete(k); }
+  if(m.strato) m.strato.setAttribute("transform", "translate(" + (-x0) + " " + (-y0) + ")");
+}
 
-  let disegno = "";
-  for(const g of m.gruppi){
-    for(const s of g.scelte){
-      for(const t of s.tratti){
-        const punti = t.geometry.map(p => {
-          const [px, py] = proietta(p.lat, p.lon, m.z);
-          return (px-x0).toFixed(1) + "," + (py-y0).toFixed(1);
-        }).join(" ");
-        disegno += '<polyline points="' + punti + '" fill="none" stroke="' + g.colore
-          + '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"'
-          + (s.incerta ? ' opacity=".45" stroke-dasharray="3 9"' : ' opacity=".8"') + ">"
-          + "<title>" + esc(s.via.nome) + (s.incerta ? " (da controllare)" : "")
-          + "</title></polyline>";
-      }
-    }
-  }
-  // i civici collegati: un bollo col numero dentro, e si tengono da parte le
-  // posizioni sullo schermo per sapere dov'è che si tocca
-  m.segni = [];
-  for(const c of m.civici){
-    const [px, py] = proietta(c.lat, c.lon, m.z);
-    const x = px - x0, y = py - y0;
-    if(x < -30 || y < -30 || x > w+30 || y > h+30) continue;
-    m.segni.push({civico:c, x, y});
-    const largo = Math.max(22, 9 + String(c.civico).length * 7);
-    disegno += '<g><rect x="' + (x-largo/2).toFixed(1) + '" y="' + (y-11).toFixed(1)
-      + '" width="' + largo + '" height="22" rx="11" fill="#fff" stroke="#1b1d21" stroke-width="1.5"/>'
-      + '<text x="' + x.toFixed(1) + '" y="' + (y+4).toFixed(1) + '" text-anchor="middle"'
-      + ' font-size="12" font-weight="700" fill="#1b1d21">' + esc(c.civico) + "</text>"
-      + "<title>" + esc(nomeVia(c.viaId)) + " " + esc(c.civico) + "</title></g>";
-  }
-  m.svg.innerHTML = disegno;
+/* Trascinando arrivano molti più eventi che fotogrammi: si ridisegna una volta
+   per fotogramma, se no il movimento resta indietro e sembra a scatti. */
+function chiediSpostamento(){
+  const m = mappa;
+  if(!m || m.inCoda) return;
+  m.inCoda = true;
+  requestAnimationFrame(()=>{ if(mappa === m){ m.inCoda = false; spostaMappa(); } });
+}
+
+function disegnaMappa(){
+  costruisciDisegno();
+  spostaMappa();
 }
 
 function zoomMappa(passo, ancoraX, ancoraY){
@@ -1128,7 +1183,7 @@ function collegaMani(box){
     if(dita.size === 1){
       mappa.cx -= ev.clientX - d.x;
       mappa.cy -= ev.clientY - d.y;
-      disegnaMappa();
+      chiediSpostamento();
     }
     d.x = ev.clientX; d.y = ev.clientY;
     if(dita.size === 2){
@@ -1151,14 +1206,17 @@ function collegaMani(box){
   };
   box.onpointerup = molla;
   box.onpointercancel = molla;
-  /* La rotella ingrandisce solo col Ctrl premuto: se no, scorrendo la pagina
-     sopra la mappa, invece di arrivare all'elenco dei civici si finisce a
-     zoomare senza volerlo. Restano i tasti + e -, e il doppio clic. */
+  /* La rotella ingrandisce, e sotto il puntatore resta lo stesso punto. I giri
+     si sommano fino a una soglia: col trackpad arrivano decine di eventi minuti
+     per un gesto solo, e senza soglia si salterebbero tre livelli per volta. */
+  let giri = 0;
   box.onwheel = ev => {
-    if(!ev.ctrlKey && !ev.metaKey) return;
     ev.preventDefault();
+    giri += ev.deltaY;
+    if(Math.abs(giri) < 40) return;
     const r = box.getBoundingClientRect();
-    zoomMappa(ev.deltaY < 0 ? 1 : -1, ev.clientX - r.left, ev.clientY - r.top);
+    zoomMappa(giri < 0 ? 1 : -1, ev.clientX - r.left, ev.clientY - r.top);
+    giri = 0;
   };
   box.ondblclick = ev => {
     const r = box.getBoundingClientRect();
@@ -1174,7 +1232,8 @@ function toccoMappa(ev){
   const r = m.box.getBoundingClientRect();
   const x = ev.clientX - r.left, y = ev.clientY - r.top;
   if(m.daPiazzare) return piazzaCivico(x, y);
-  const vicino = m.segni.map(s => ({s, d:Math.hypot(s.x - x, s.y - y)}))
+  const x0 = m.cx - m.box.clientWidth/2, y0 = m.cy - m.box.clientHeight/2;
+  const vicino = m.segni.map(s => ({s, d:Math.hypot(s.x - x0 - x, s.y - y0 - y)}))
                         .filter(o => o.d < 22).sort((a,b)=> a.d - b.d)[0];
   if(vicino) apriCivicoMappa(vicino.s.civico);
 }
@@ -1371,6 +1430,12 @@ async function caricaMappa(unaVia, zone){
   const incerte = presi.filter(s => s.incerta);
   const nota = ["Disegnate " + conta(presi.length - incerte.length, "via", "vie")
                 + " su " + (presi.length + senza.length) + "."];
+  // agganciate a un nome scritto un po' diverso: meglio dirlo, che controllare
+  // "Pietro" al posto di "Piero" costa un secondo e sbagliarsi costa un giro
+  const storpiate = presi.filter(s => s.nomeOsm &&
+    !paroleVia(s.via.nome).every(p => paroleVia(s.nomeOsm).includes(p)));
+  if(storpiate.length) nota.push("Scritte un po' diverse sulla cartina: "
+    + storpiate.map(s => "<b>" + esc(s.via.nome) + "</b> → " + esc(s.nomeOsm)).join(", ") + ".");
   if(incerte.length) nota.push("Tratteggiate perché cadono lontano dalle altre, "
     + "e potrebbero essere le omonime di un altro paese: <b>"
     + esc(incerte.map(s => s.via.nome).join(", ")) + "</b>.");

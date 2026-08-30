@@ -60,7 +60,10 @@ COME SI USA
 8. LA MAPPA. Dentro una zona, il tasto "Mappa del giro" fa vedere le vie di
    quel giro evidenziate sulla cartina, un colore per zona. Dentro una via,
    il tasto con la cartina in alto mostra quella sola. Si trascina col dito
-   e si ingrandisce con due dita o coi tasti + e -.
+   e si ingrandisce con due dita, con la rotella del mouse, col doppio
+   clic o coi tasti + e -. Nota: con la rotella sopra la mappa si
+   ingrandisce, non si scorre la pagina; per scendere all'elenco dei
+   civici usa la rotella fuori dalla mappa, o la barra di scorrimento.
    Le vie tratteggiate sono quelle che cadono lontano dalle altre: quasi
    sempre e' un'altra strada con lo stesso nome in un paese vicino, quindi
    guardale prima di fidarti. Quelle che su OpenStreetMap non ci sono
