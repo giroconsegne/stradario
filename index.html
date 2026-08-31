@@ -1039,15 +1039,23 @@ function collegaMani(box){
   const dita = new Map();
   let distanza = 0;
   box.onpointerdown = ev => {
-    box.setPointerCapture(ev.pointerId);
+    /* Un dito che si alza senza che il browser lo dica resterebbe contato per
+       sempre: da lì in poi la mappa crede che siano due e non si sposta più.
+       Un tocco "primario" vuol dire che non c'è nessun altro dito appoggiato,
+       quindi quel che era rimasto contato è roba vecchia e si butta. Il secondo
+       dito di una pinzata non è primario, e non fa danno. */
+    if(ev.isPrimary){ dita.clear(); distanza = 0; }
+    try{ box.setPointerCapture(ev.pointerId); }catch(e){}
     dita.set(ev.pointerId, {x:ev.clientX, y:ev.clientY, mosso:0});
     box.classList.add("trascino");
   };
   box.onpointermove = ev => {
     const d = dita.get(ev.pointerId);
     if(!d) return;
+    // col mouse, tasto non più premuto vuol dire mollato fuori dalla mappa
+    if(ev.pointerType === "mouse" && !ev.buttons) return void rilascia(ev);
     d.mosso += Math.hypot(ev.clientX - d.x, ev.clientY - d.y);
-    if(dita.size === 1){
+    if(dita.size < 2){
       mappa.cx -= ev.clientX - d.x;
       mappa.cy -= ev.clientY - d.y;
       chiediSpostamento();
@@ -1063,16 +1071,21 @@ function collegaMani(box){
       if(nuova < distanza/1.7){ zoomMappa(-1, (a.x+b.x)/2 - r.left, (a.y+b.y)/2 - r.top); distanza = nuova; }
     }
   };
-  const molla = ev => {
+  const rilascia = ev => {
     const d = dita.get(ev.pointerId);
     dita.delete(ev.pointerId);
     if(dita.size < 2) distanza = 0;
     if(!dita.size) box.classList.remove("trascino");
+    return d;
+  };
+  const molla = ev => {
+    const d = rilascia(ev);
     // fermo com'è rimasto il dito: è un tocco, non un trascinamento
     if(d && d.mosso < 7 && ev.type === "pointerup") toccoMappa(ev);
   };
   box.onpointerup = molla;
   box.onpointercancel = molla;
+  box.onlostpointercapture = rilascia;   // capito che il dito non c'è più
   /* La rotella ingrandisce, e sotto il puntatore resta lo stesso punto. I giri
      si sommano fino a una soglia: col trackpad arrivano decine di eventi minuti
      per un gesto solo, e senza soglia si salterebbero tre livelli per volta. */
