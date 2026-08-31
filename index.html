@@ -900,7 +900,29 @@ function costruisciDisegno(){
   const m = mappa;
   if(!m) return;
   m.origine = [Math.round(m.cx), Math.round(m.cy)];
+  const suSchermo = p => {
+    const [px, py] = proietta(p[0], p[1], m.z);
+    return (px - m.origine[0]).toFixed(1) + "," + (py - m.origine[1]).toFixed(1);
+  };
   let disegno = "";
+  // le vie disegnate a mano, sotto i bolli dei civici
+  for(const v of (m.vie || [])){
+    disegno += '<polyline points="' + v.tracciato.map(suSchermo).join(" ")
+      + '" fill="none" stroke="' + coloreVia(v) + '" stroke-width="7" stroke-linecap="round"'
+      + ' stroke-linejoin="round" opacity=".75"><title>' + esc(v.nome) + "</title></polyline>";
+  }
+  // e quella che si sta disegnando adesso, coi suoi punti in evidenza
+  if(m.disegnando && m.disegnando.length){
+    if(m.disegnando.length > 1)
+      disegno += '<polyline points="' + m.disegnando.map(suSchermo).join(" ")
+        + '" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round"'
+        + ' stroke-linejoin="round" opacity=".65"/>';
+    for(const p of m.disegnando){
+      const [x, y] = suSchermo(p).split(",");
+      disegno += '<circle cx="' + x + '" cy="' + y + '" r="5" fill="#fff"'
+        + ' stroke="var(--accent)" stroke-width="3"/>';
+    }
+  }
   m.segni = [];
   for(const c of m.civici){
     const [mondoX, mondoY] = proietta(c.lat, c.lon, m.z);
@@ -1070,6 +1092,7 @@ function toccoMappa(ev){
   if(!m) return;
   const r = m.box.getBoundingClientRect();
   const x = ev.clientX - r.left, y = ev.clientY - r.top;
+  if(m.disegnando) return puntoDisegno(x, y);
   if(m.daPiazzare) return piazzaCivico(x, y);
   const x0 = m.cx - m.box.clientWidth/2, y0 = m.cy - m.box.clientHeight/2;
   const vicino = m.segni.map(s => ({s, d:Math.hypot(s.x - x0 - x, s.y - y0 - y)}))
@@ -1102,6 +1125,8 @@ function piazzaCivico(x, y){
 function armaCivico(numero){
   const m = mappa;
   if(!m) return;
+  m.disegnando = null;                  // una cosa alla volta
+  pannelloVia();
   m.daPiazzare = m.daPiazzare === numero ? null : numero;
   m.box.classList.toggle("punta", !!m.daPiazzare);
   pannelloCivici();
@@ -1177,6 +1202,105 @@ document.getElementById("civTogli").onclick = ()=>{
   toast("Civico " + c.civico + " tolto dalla mappa");
 };
 
+/* ---- il disegno della via, fatto a mano ----
+   La riga della strada la mette chi fa il giro, toccando i punti uno dopo
+   l'altro: dove comincia, dove gira, dove finisce. Il tracciato sta dentro la
+   via stessa, quindi entra in backup e sincronizzazione come tutto il resto. */
+const coloreVia = v => coloreZona(zoneDellaVia(v.id)[0] || SENZA_ZONA);
+
+function iniziaDisegnoVia(){
+  const m = mappa;
+  if(!m || !m.viaCollegabile) return;
+  m.daPiazzare = null;                  // una cosa alla volta
+  m.disegnando = [];
+  m.box.classList.add("punta");
+  pannelloVia();
+  pannelloCivici();
+  toast("Tocca dove comincia la via");
+}
+function puntoDisegno(x, y){
+  const m = mappa;
+  const [lat, lon] = daPixel(m.cx - m.box.clientWidth/2 + x,
+                             m.cy - m.box.clientHeight/2 + y, m.z);
+  m.disegnando.push([lat, lon]);
+  disegnaMappa();
+  pannelloVia();
+}
+function indietroDisegno(){
+  const m = mappa;
+  if(!m || !m.disegnando || !m.disegnando.length) return;
+  m.disegnando.pop();
+  disegnaMappa();
+  pannelloVia();
+}
+function fineDisegnoVia(){
+  const m = mappa;
+  const v = via(m.viaCollegabile);
+  if(!v) return;
+  if(m.disegnando.length < 2){ toast("Servono almeno due punti"); return; }
+  tocca(Object.assign(v, {tracciato: m.disegnando}));
+  save();
+  m.vie = [v];
+  m.disegnando = null;
+  m.box.classList.remove("punta");
+  disegnaMappa();
+  pannelloVia();
+  pannelloCivici();
+  toast("Via disegnata");
+}
+function annullaDisegnoVia(){
+  const m = mappa;
+  m.disegnando = null;
+  m.box.classList.remove("punta");
+  disegnaMappa();
+  pannelloVia();
+  pannelloCivici();
+}
+async function cancellaDisegnoVia(){
+  const m = mappa;
+  const v = via(m.viaCollegabile);
+  if(!v || !v.tracciato) return;
+  if(!await chiedi({titolo:"Cancellare il disegno di " + v.nome + "?",
+                    testo:"Restano i civici: sparisce solo la riga della strada.",
+                    conferma:"Cancella il disegno"})) return;
+  delete v.tracciato;
+  tocca(v);
+  save();
+  m.vie = [];
+  disegnaMappa();
+  pannelloVia();
+  toast("Disegno cancellato");
+}
+
+function pannelloVia(){
+  const box = document.getElementById("pannelloVia");
+  const m = mappa;
+  if(!box || !m || !m.viaCollegabile) return;
+  const v = via(m.viaCollegabile);
+  const gia = v && v.tracciato && v.tracciato.length;
+  if(m.disegnando){
+    box.innerHTML = `
+      <div style="padding:12px">
+        <div class="hint">${m.disegnando.length === 0
+          ? "Tocca sulla mappa dove <b>comincia</b> la via."
+          : m.disegnando.length === 1
+            ? "Ora tocca dove <b>finisce</b>. Se la strada gira, tocca prima le curve."
+            : "<b>" + m.disegnando.length + " punti</b>. Continua a toccare le curve, o tocca Fatto."}</div>
+        <div class="row" style="margin-top:10px; flex-wrap:wrap">
+          <button ${m.disegnando.length ? "" : "disabled"} onclick="indietroDisegno()">&#8592; Torna indietro</button>
+          <button class="primary" ${m.disegnando.length > 1 ? "" : "disabled"} onclick="fineDisegnoVia()">Fatto</button>
+          <button class="ghost" onclick="annullaDisegnoVia()">Annulla</button>
+        </div>
+      </div>`;
+  }else{
+    box.innerHTML = `
+      <div style="padding:12px" class="row" style="flex-wrap:wrap">
+        <button onclick="iniziaDisegnoVia()">&#9998; ${gia ? "Ridisegna la via" : "Disegna la via"}</button>
+        ${gia ? `<button class="ghost danger" onclick="cancellaDisegnoVia()">Cancella il disegno</button>` : ""}
+      </div>`;
+  }
+}
+
 function renderMappa(){
   mappa = null;
   const unaVia = view.viaId ? via(view.viaId) : null;
@@ -1189,6 +1313,9 @@ function renderMappa(){
   // i civici da mostrare: quelli della via, o quelli di tutta la zona
   const civici = unaVia ? civiciSullaMappa(unaVia.id)
     : db.civici.filter(c => z === undefined || zonaDelCivico(c.viaId, c.civico) === z);
+  // le vie disegnate a mano: quella aperta, o tutte quelle della zona
+  const vie = (unaVia ? [unaVia] : db.vie.filter(v => z === undefined || zoneDellaVia(v.id).includes(z)))
+    .filter(v => v.tracciato && v.tracciato.length > 1);
 
   app.innerHTML = `
     <div class="crumb">
@@ -1205,19 +1332,21 @@ function renderMappa(){
       </div>
       <div class="credito">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>
     </div>
-    ${unaVia ? `<div class="card" id="pannelloCivici" style="margin-top:12px"></div>` : ""}
+    ${unaVia ? `<div class="card" id="pannelloVia" style="margin-top:12px"></div>
+    <div class="card" id="pannelloCivici" style="margin-top:12px"></div>` : ""}
     <p class="hint" id="notaMappa" style="margin-top:10px"></p>`;
 
   const box = document.getElementById("boxMappa");
   // arrivando dalla puntina si inquadra quel civico, non tutta la via
   const gia = unaVia && view.civico ? civicoSegnato(unaVia.id, view.civico) : null;
   const dove = inquadra(gia ? [gia] : civici, box);
-  mappa = {box, svg:document.getElementById("disegnoMappa"), civici,
+  mappa = {box, svg:document.getElementById("disegnoMappa"), civici, vie,
            tessere:new Map(), segni:[], z:dove.z, cx:dove.cx, cy:dove.cy,
-           viaCollegabile: unaVia ? unaVia.id : null, daPiazzare:null};
+           viaCollegabile: unaVia ? unaVia.id : null, daPiazzare:null, disegnando:null};
   collegaMani(box);
   disegnaMappa();
   if(view.civico && !gia) armaCivico(view.civico);   // da mettere: si arma da sé
+  pannelloVia();
   pannelloCivici();
   addEventListener("resize", disegnaMappa);
 

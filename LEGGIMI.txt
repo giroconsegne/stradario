@@ -82,6 +82,18 @@ COME SI USA
    nella sincronizzazione: quello che colleghi sul PC lo ritrovi sul
    telefono.
 
+10. DISEGNARE LA VIA. La riga colorata della strada non la mette l'app:
+    la metti tu, e per questo e' giusta. Sulla mappa di una via c'e' il
+    tasto "Disegna la via". Lo tocchi, poi tocchi sulla mappa dove
+    comincia la strada e dove finisce; se fa una curva tocchi anche nel
+    mezzo, dove gira. La riga segue i punti che tocchi, uno dopo
+    l'altro. "Torna indietro" toglie l'ultimo punto, "Fatto" chiude.
+    Dopo, il tasto diventa "Ridisegna la via", e accanto c'e'
+    "Cancella il disegno".
+    La riga si rivede ogni volta che apri la mappa, anche in quella del
+    giro intero, col colore della zona. Come per i civici non c'e'
+    nessun obbligo: disegni le vie che ti servono.
+
 DOVE SONO I DATI
 Solo sul dispositivo, dentro il browser. Niente internet, nessun account.
 La mappa scarica solo le tessere della cartina, chieste per riquadro di

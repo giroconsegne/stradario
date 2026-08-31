@@ -23,9 +23,14 @@ si apre una via e vengono fuori i nominativi raggruppati per civico.
   Il civico si confronta per intero, quindi `12` non tira dentro il 120 e il 121.
   Scorciatoia: `/`.
 - **Mappa dei civici**: la cartina di OpenStreetMap con sopra i civici che ci metti
-  tu. Le strade non vengono evidenziate: i nomi delle vie stanno già stampati sulla
-  cartina, e cercarle automaticamente voleva dire pescare quelle con lo stesso nome
-  nei paesi vicini. Ogni bollo porta il numero e il colore della sua zona.
+  tu. Le strade non vengono evidenziate da sole: i nomi delle vie stanno già stampati
+  sulla cartina, e cercarle automaticamente voleva dire pescare quelle con lo stesso
+  nome nei paesi vicini. Ogni bollo porta il numero e il colore della sua zona.
+- **Disegnare una via**: sulla mappa di una via, "Disegna la via" e poi si tocca dove
+  comincia, dove gira e dove finisce; la riga segue i punti toccati. C'è "Torna
+  indietro" per l'ultimo punto e "Fatto" per chiudere. Il tracciato resta nella via,
+  quindi entra in backup e sincronizzazione, e si rivede anche sulla mappa del giro,
+  col colore della zona.
 - **Collegare un civico**: nella scheda della via, la puntina accanto a "Civico 12" —
   spenta se non è ancora sulla mappa. La tocchi, si apre la mappa con quel numero
   armato, tocchi il punto dove sta ed è fatto; il numero dopo si arma da solo, così
