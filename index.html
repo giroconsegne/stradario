@@ -858,7 +858,6 @@ function renderRicerca(q){
    nome nei paesi vicini. Dall'archivio non esce niente: le tessere della cartina
    si chiedono per riquadro, non per via. */
 const TESSERE = "https://tile.openstreetmap.org/";
-const COLORI_ZONA = ["#e2483d", "#1d5fd6", "#0f7b4f", "#b8860b", "#8e44ad", "#0d7c8c"];
 /* Dove si apre la mappa quando non c'è ancora nessun civico da cui farsi
    guidare: San Miniato Basso. Una riga da cambiare per un altro giro. */
 const CENTRO_PREDEFINITO = {lat:43.6899, lon:10.7869, z:15};
@@ -886,10 +885,6 @@ const civicoSegnato = (viaId, civico) =>
   db.civici.find(c => c.viaId === viaId && norm(c.civico) === norm(civico));
 const civiciDellaVia = viaId => [...new Set(abitantiDiVia(viaId)
   .map(a => a.civico).filter(Boolean))].sort(cmpCivico);
-const coloreZona = zonaId => {
-  const i = zoneOrdinate().findIndex(z => z.id === zonaId);
-  return COLORI_ZONA[(i < 0 ? 0 : i) % COLORI_ZONA.length];
-};
 
 /* Il disegno è diviso in due, se no trascinare la mappa era a scatti: i bolli si
    costruiscono una volta per livello di zoom, e spostarsi vuol dire spostare il
@@ -929,7 +924,7 @@ function costruisciDisegno(){
     m.segni.push({civico:c, x:mondoX, y:mondoY});
     const x = mondoX - m.origine[0], y = mondoY - m.origine[1];
     const largo = Math.max(24, 10 + String(c.civico).length * 8);
-    const colore = coloreZona(zonaDelCivico(c.viaId, c.civico));
+    const colore = coloreVia(via(c.viaId));
     disegno += '<g><rect x="' + (x-largo/2).toFixed(1) + '" y="' + (y-12).toFixed(1)
       + '" width="' + largo + '" height="24" rx="12" fill="#fff" stroke="' + colore
       + '" stroke-width="2.5"/>'
@@ -1008,16 +1003,17 @@ function zoomMappa(passo, ancoraX, ancoraY){
   disegnaMappa();
 }
 
-/* Dove aprire la mappa: sui civici che ci sono già, se no su quelli del resto
-   dell'archivio, se no sul punto di partenza. */
-function inquadra(civici, box){
-  const punti = civici.length ? civici : db.civici;
+/* Dove aprire la mappa: su quello che c'è di questa via — i suoi civici e il suo
+   disegno — se no su tutto il resto dell'archivio, se no sul punto di partenza.
+   Entrando in una via si deve vedere quella via, non un pezzo di paese lontano. */
+function inquadra(punti, box){
+  if(!punti.length) punti = tuttiIPunti();
   if(!punti.length){
     const [cx, cy] = proietta(CENTRO_PREDEFINITO.lat, CENTRO_PREDEFINITO.lon, CENTRO_PREDEFINITO.z);
     return {z:CENTRO_PREDEFINITO.z, cx, cy};
   }
-  const laMin = Math.min(...punti.map(c=>c.lat)), laMax = Math.max(...punti.map(c=>c.lat));
-  const loMin = Math.min(...punti.map(c=>c.lon)), loMax = Math.max(...punti.map(c=>c.lon));
+  const laMin = Math.min(...punti.map(p=>p[0])), laMax = Math.max(...punti.map(p=>p[0]));
+  const loMin = Math.min(...punti.map(p=>p[1])), loMax = Math.max(...punti.map(p=>p[1]));
   const w = box.clientWidth || 320, h = box.clientHeight || 400;
   let z = 19;
   while(z > 11){
@@ -1028,6 +1024,13 @@ function inquadra(civici, box){
   const [cx, cy] = proietta((laMin+laMax)/2, (loMin+loMax)/2, z);
   return {z, cx, cy};
 }
+
+/* Tutto quello che sta sulla mappa nell'archivio: serve solo come ripiego,
+   quando la via aperta non ha ancora né civici né disegno. */
+const tuttiIPunti = () => [
+  ...db.civici.map(c => [c.lat, c.lon]),
+  ...db.vie.filter(v => v.tracciato).flatMap(v => v.tracciato)
+];
 
 function collegaMani(box){
   const dita = new Map();
@@ -1206,7 +1209,22 @@ document.getElementById("civTogli").onclick = ()=>{
    La riga della strada la mette chi fa il giro, toccando i punti uno dopo
    l'altro: dove comincia, dove gira, dove finisce. Il tracciato sta dentro la
    via stessa, quindi entra in backup e sincronizzazione come tutto il resto. */
-const coloreVia = v => coloreZona(zoneDellaVia(v.id)[0] || SENZA_ZONA);
+/* Un colore per ogni via. Non a caso dal nome: con cinquanta vie i colori
+   casuali si affollano e due strade finiscono uguali. Si va invece per posizione
+   nell'elenco, distanziando ogni volta di un giro e un terzo: è la spaziatura che
+   tiene i colori il più lontani possibile fra loro, comunque siano tante.
+   Le vie nuove si aggiungono in fondo, quindi i colori di quelle che ci sono già
+   non cambiano. Oltre al tono gira anche la tinta — più carica o più spenta, più
+   chiara o più scura — così le poche coppie di toni vicini restano distinguibili.
+   Restano tutti scuri quanto serve per leggersi sulla cartina chiara. */
+const TINTE = [[62,42], [80,32], [45,52], [72,26]];
+function coloreVia(v){
+  if(!v) return "#777";
+  const i = db.vie.findIndex(x => x.id === v.id);
+  if(i < 0) return "#777";
+  const [sat, luce] = TINTE[i % TINTE.length];
+  return "hsl(" + (Math.round(i * 137.508) % 360) + "," + sat + "%," + luce + "%)";
+}
 
 function iniziaDisegnoVia(){
   const m = mappa;
@@ -1339,7 +1357,8 @@ function renderMappa(){
   const box = document.getElementById("boxMappa");
   // arrivando dalla puntina si inquadra quel civico, non tutta la via
   const gia = unaVia && view.civico ? civicoSegnato(unaVia.id, view.civico) : null;
-  const dove = inquadra(gia ? [gia] : civici, box);
+  const dove = inquadra(gia ? [[gia.lat, gia.lon]]
+    : [...civici.map(c => [c.lat, c.lon]), ...vie.flatMap(v => v.tracciato)], box);
   mappa = {box, svg:document.getElementById("disegnoMappa"), civici, vie,
            tessere:new Map(), segni:[], z:dove.z, cx:dove.cx, cy:dove.cy,
            viaCollegabile: unaVia ? unaVia.id : null, daPiazzare:null, disegnando:null};

@@ -91,8 +91,13 @@ COME SI USA
     Dopo, il tasto diventa "Ridisegna la via", e accanto c'e'
     "Cancella il disegno".
     La riga si rivede ogni volta che apri la mappa, anche in quella del
-    giro intero, col colore della zona. Come per i civici non c'e'
-    nessun obbligo: disegni le vie che ti servono.
+    giro intero. Ogni via ha il SUO colore, sempre quello, e anche i
+    bollini dei civici prendono il colore della loro strada: cosi' sulla
+    mappa del giro si distingue una via dall'altra a colpo d'occhio.
+    Come per i civici non c'e' nessun obbligo: disegni quelle che ti
+    servono.
+    Aprendo la mappa di una via, la mappa si mette su quella via: i suoi
+    civici e il suo disegno, non un pezzo di paese lontano.
 
 DOVE SONO I DATI
 Solo sul dispositivo, dentro il browser. Niente internet, nessun account.

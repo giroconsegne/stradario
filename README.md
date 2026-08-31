@@ -25,7 +25,9 @@ si apre una via e vengono fuori i nominativi raggruppati per civico.
 - **Mappa dei civici**: la cartina di OpenStreetMap con sopra i civici che ci metti
   tu. Le strade non vengono evidenziate da sole: i nomi delle vie stanno già stampati
   sulla cartina, e cercarle automaticamente voleva dire pescare quelle con lo stesso
-  nome nei paesi vicini. Ogni bollo porta il numero e il colore della sua zona.
+  nome nei paesi vicini. **Ogni via ha il suo colore**, sempre lo stesso, e il bollo
+  di un civico porta il numero e il colore della sua strada. Aprendo la mappa di una
+  via si inquadra quella via — i suoi civici e il suo disegno — non il resto del paese.
 - **Disegnare una via**: sulla mappa di una via, "Disegna la via" e poi si tocca dove
   comincia, dove gira e dove finisce; la riga segue i punti toccati. C'è "Torna
   indietro" per l'ultimo punto e "Fatto" per chiudere. Il tracciato resta nella via,
