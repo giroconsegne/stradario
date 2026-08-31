@@ -2275,7 +2275,21 @@ if("serviceWorker" in navigator && location.protocol.startsWith("http")){
 render();
 mostraStato(syncAttivo() ? "ok" : (syncConfigurato() ? "scollegato" : "spento"));
 sincronizza();
-document.getElementById("dlgGrazie").showModal();
+/* Il grazie a Guglielmo compare una volta al giorno, alla prima apertura: qui si
+   appunta il giorno in cui è già stato mostrato. Sta fuori dall'archivio, perché
+   è una cosa di questo dispositivo e non ha senso portarla in giro col backup né
+   sincronizzarla. Se il browser non fa salvare niente, pazienza: si mostra. */
+const KEY_GRAZIE = "stradario.grazie";
+function forseIlGrazie(){
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  const oggi = d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate());
+  try{
+    if(localStorage.getItem(KEY_GRAZIE) === oggi) return;
+    localStorage.setItem(KEY_GRAZIE, oggi);
+  }catch(e){}
+  document.getElementById("dlgGrazie").showModal();
+}
+forseIlGrazie();
 </script>
 </body>
 </html>
