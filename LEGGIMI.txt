@@ -57,37 +57,36 @@ COME SI USA
    "gramsci 12" oppure "fiume 3 int 1". Il civico deve essere quello
    giusto per intero: cercando 12 non escono il 120 e il 121.
 
-8. LA MAPPA. Dentro una zona, il tasto "Mappa del giro" fa vedere le vie di
-   quel giro evidenziate sulla cartina, un colore per zona. Dentro una via,
-   il tasto con la cartina in alto mostra quella sola. Si trascina col dito
-   e si ingrandisce con due dita, con la rotella del mouse, col doppio
-   clic o coi tasti + e -. Nota: con la rotella sopra la mappa si
-   ingrandisce, non si scorre la pagina; per scendere all'elenco dei
-   civici usa la rotella fuori dalla mappa, o la barra di scorrimento.
-   Le vie tratteggiate sono quelle che cadono lontano dalle altre: quasi
-   sempre e' un'altra strada con lo stesso nome in un paese vicino, quindi
-   guardale prima di fidarti. Quelle che su OpenStreetMap non ci sono
-   proprio vengono elencate sotto la mappa.
-   La mappa ha bisogno della rete, il resto dell'app no.
+8. LA MAPPA. E' la cartina di OpenStreetMap con sopra i civici che ci
+   metti tu. Le strade non vengono evidenziate: i nomi delle vie sono
+   gia' stampati sulla cartina. Ci si arriva dalla puntina dentro una
+   via, oppure dal tasto "Mappa dei civici" in cima all'elenco delle vie
+   di una zona. Si trascina col dito e si ingrandisce con due dita, con
+   la rotella del mouse, col doppio clic o coi tasti + e -.
+   Nota: con la rotella sopra la mappa si ingrandisce, non si scorre la
+   pagina; per scendere sotto usa la rotella fuori dalla mappa, o la
+   barra di scorrimento.
 
-9. I CIVICI SULLA MAPPA. Sotto la mappa di una via c'e' l'elenco dei suoi
-   civici. Tocchi il numero, poi tocchi sulla mappa il punto dove sta, e
-   il civico resta li'. Il numero dopo si arma da solo, cosi' ne metti
-   tanti di fila. Toccando un civico gia' messo si apre la finestra con
-   i nomi che hai salvato a quel numero, interni compresi; da li' lo
-   puoi spostare o togliere dalla mappa.
+9. COLLEGARE UN CIVICO. Nella scheda della via, accanto a "Civico 12",
+   c'e' una puntina: spenta se quel civico non e' ancora sulla mappa,
+   accesa se c'e'. La tocchi e si apre la mappa con quel numero gia'
+   armato: tocchi il punto dove sta, ed e' collegato. Il numero dopo si
+   arma da solo, cosi' ne metti tanti di fila senza altri tocchi.
+   Toccando un bollo si apre la finestra con i nomi che hai salvato a
+   quel numero, interni compresi; da li' lo puoi spostare o toglierlo.
    I civici su OpenStreetMap qui non ci sono (nel comune ne risultano
-   158, e dei nostri 4), per questo tocca metterli a mano.
+   158, e dei nostri 4), per questo tocca metterli a mano. Non c'e'
+   nessun obbligo di metterli tutti: quelli che colleghi si vedono, gli
+   altri semplicemente non ci sono ancora.
    La posizione resta salvata nell'archivio, quindi entra nel backup e
    nella sincronizzazione: quello che colleghi sul PC lo ritrovi sul
-   telefono. Non c'e' nessun obbligo di metterli tutti: quelli che
-   colleghi si vedono, gli altri semplicemente non ci sono ancora.
+   telefono.
 
 DOVE SONO I DATI
 Solo sul dispositivo, dentro il browser. Niente internet, nessun account.
-Unica eccezione la mappa: per disegnare le strade chiede i tracciati a
-OpenStreetMap, e per farlo manda fuori i NOMI DELLE VIE e il comune.
-I nominativi non partono mai, nemmeno da li'.
+La mappa scarica solo le tessere della cartina, chieste per riquadro di
+territorio e non per via: dall'archivio non esce niente, ne' nomi, ne'
+vie, ne' civici.
 Se vuoi che PC e telefono lavorino sullo stesso archivio si puo' accendere
 la sincronizzazione: istruzioni in SINCRONIZZAZIONE.txt. Finche' non la
 configuri non cambia niente e i dati non escono da qui.
