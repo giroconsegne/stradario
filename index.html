@@ -45,6 +45,9 @@
   button{font:inherit; cursor:pointer; border-radius:9px; border:1px solid var(--line);
     background:var(--card); color:var(--text); padding:8px 13px}
   button:hover{border-color:var(--accent)}
+  /* un tasto spento deve vedersi spento, se no si tocca e non succede niente */
+  button:disabled{opacity:.4; cursor:default}
+  button:disabled:hover{border-color:var(--line)}
   button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
   button.ghost{background:transparent}
   button.link{border:0; background:none; color:var(--accent); padding:4px 6px; text-decoration:underline}
@@ -1771,7 +1774,17 @@ document.getElementById("fileImport").onchange = ev=>{
       }
       for(const v of d.vie){
         const esistente = db.vie.find(x => norm(x.nome) === norm(v.nome));
-        if(esistente){ mappa[v.id] = esistente.id; }
+        if(esistente){
+          mappa[v.id] = esistente.id;
+          /* La via c'è già e resta quella di qui, ma quello che qui manca si
+             prende dall'altro archivio: il disegno fatto sul telefono, o il CAP
+             compilato là, se no unendo i backup quel lavoro sparirebbe. */
+          const aggiunte = {};
+          if(v.tracciato && !(esistente.tracciato || []).length) aggiunte.tracciato = v.tracciato;
+          for(const campo of ["cap", "localita", "note"])
+            if(v[campo] && !esistente[campo]) aggiunte[campo] = v[campo];
+          if(Object.keys(aggiunte).length) tocca(Object.assign(esistente, aggiunte));
+        }
         else{ const nid = uid(); mappa[v.id] = nid; db.vie.push(tocca({...v, id:nid})); }
       }
       for(const a of d.abitanti){
