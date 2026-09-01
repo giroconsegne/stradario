@@ -1013,9 +1013,19 @@ function zoomMappa(passo, ancoraX, ancoraY){
    disegno — se no su tutto il resto dell'archivio, se no sul punto di partenza.
    Entrando in una via si deve vedere quella via, non un pezzo di paese lontano. */
 function inquadra(punti, box){
-  if(!punti.length) punti = tuttiIPunti();
+  /* Questa via non ha ancora niente: la mappa si apre lo stesso, larga, dalle
+     parti del lavoro già fatto. Prima si stringeva sui civici di un'altra
+     strada, e uno apriva la sua via trovandosi incollato su un pezzo di paese
+     che non c'entrava, senza bolli e senza riga: sembrava rotta. */
   if(!punti.length){
-    const [cx, cy] = proietta(CENTRO_PREDEFINITO.lat, CENTRO_PREDEFINITO.lon, CENTRO_PREDEFINITO.z);
+    const altri = tuttiIPunti();
+    const mezzo = lista => {
+      const s = [...lista].sort((a,b)=> a-b);
+      return s[Math.floor(s.length/2)];
+    };
+    const lat = altri.length ? mezzo(altri.map(p=>p[0])) : CENTRO_PREDEFINITO.lat;
+    const lon = altri.length ? mezzo(altri.map(p=>p[1])) : CENTRO_PREDEFINITO.lon;
+    const [cx, cy] = proietta(lat, lon, CENTRO_PREDEFINITO.z);
     return {z:CENTRO_PREDEFINITO.z, cx, cy};
   }
   const laMin = Math.min(...punti.map(p=>p[0])), laMax = Math.max(...punti.map(p=>p[0]));
